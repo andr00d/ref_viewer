@@ -21,9 +21,9 @@ pub struct Index
 pub struct Image
 {
     pub file: String,
-    pub artist: String, 
+    pub artists: Vec<String>, 
     pub size: String, 
-    pub link: String, 
+    pub links: Vec<String>, 
     pub tags: Vec<String>,
 
     // thumbnail
@@ -41,20 +41,19 @@ pub struct Image
 
 impl Image 
 {
-
     pub fn new(
         file: String,
-        artist: String, 
+        artists: Vec<String>, 
         size: String, 
-        link: String, 
+        links: Vec<String>, 
         tags: Vec<String>,
         ) -> Image 
     {
         Image{
         file : file, 
-        artist : artist, 
+        artists : artists, 
         size: size, 
-        link: link, 
+        links: links, 
         tags: tags,
 
         thumb_texture: None,
@@ -235,6 +234,48 @@ impl Image
         match self.tags.iter().position(|x| x == tag)
         {
             Some(index) => self.tags.remove(index),
+            None => return false,
+        };
+
+        return true
+    }  
+
+    pub fn add_link(&mut self, link: &String) -> ()
+    {
+        println!("{}", link);
+        if !self.links.contains(&link)
+        {
+            self.links.push(link.clone());
+            self.links.sort();
+        }
+    }
+
+    pub fn remove_link(&mut self, link: &String) -> bool
+    {
+        match self.links.iter().position(|x| x == link)
+        {
+            Some(index) => self.links.remove(index),
+            None => return false,
+        };
+
+        return true
+    }  
+
+    pub fn add_artist(&mut self, artist: &String) -> ()
+    {
+        println!("{}", artist);
+        if !self.artists.contains(&artist)
+        {
+            self.artists.push(artist.clone());
+            self.artists.sort();
+        }
+    }
+
+    pub fn remove_artist(&mut self, artist: &String) -> bool
+    {
+        match self.artists.iter().position(|x| x == artist)
+        {
+            Some(index) => self.artists.remove(index),
             None => return false,
         };
 

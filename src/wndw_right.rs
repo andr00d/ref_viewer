@@ -10,20 +10,74 @@ pub struct WndwRight
     pub tag: String,
 }
 
-pub enum Action
+pub enum VectorType
 {
-    TagAdd,
-    TagDel,
-    LinkAdd,
-    LinkDel,
-    ArtistAdd,
-    ArtistDel,
+    Tag,
+    Link,
+    Artist,
 }
 
-pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, boxes: &mut WndwRight ) -> ()
+pub enum Action
+{
+    TagAdd(String),
+    TagDel(String),
+    LinkAdd(String),
+    LinkDel(String),
+    ArtistAdd(String),
+    ArtistDel(String),
+}
+
+fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, tagtype: VectorType) -> Option<Action>
+{
+    let mut result = None;
+
+    for item in vector
+    {
+        let resp_del = match tagtype
+        {
+            VectorType::Link => ui.add(egui::Label::new(item)
+                                  .sense(egui::Sense::click())),
+            _ => ui.add(egui::Label::new("+ - ".to_string() + item)
+                   .sense(egui::Sense::click())),
+        };
+    
+        resp_del.context_menu(|ui| {
+            if ui.button("Delete item").clicked() 
+            {
+                let _ = match tagtype
+                {
+                    VectorType::Tag => result.insert(Action::TagDel(item.clone())),
+                    VectorType::Link => result.insert(Action::LinkDel(item.clone())),
+                    VectorType::Artist => result.insert(Action::ArtistDel(item.clone())),
+                };
+                ui.close_menu();
+            }
+        }); 
+    }
+
+    let resp_add = ui.add(
+            egui::TextEdit::singleline(textbox).hint_text("add item")
+            .frame(false)
+        );
+
+    if resp_add.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
+    {
+        let _ = match tagtype
+        {
+            VectorType::Tag => result.insert(Action::TagAdd(textbox.clone())),
+            VectorType::Link => result.insert(Action::LinkAdd(textbox.clone())),
+            VectorType::Artist => result.insert(Action::ArtistAdd(textbox.clone())),
+        };
+        textbox.clear();
+        //TODO: keep focus after pressing enter
+    }
+
+    return result;
+}
+
+pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, boxes: &mut WndwRight) -> ()
 {
     let img = &img_data.folders[main_img.folder].images[main_img.image];
-    let mut selected_data = "".to_string();
     let mut tag_action = None;
 
     egui::SidePanel::right("right_panel")
@@ -36,8 +90,17 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
                         
-                let path = img.file.clone();
-                ui.add(egui::Label::new(path));
+                ui.add(egui::Label::new(&img.file));
+                ui.add(egui::Separator::default());
+
+
+                /////////////////////////////////////////
+
+                ui.add(egui::Label::new(RichText::new("size")
+                        .background_color(egui::Color32::from_black_alpha(100))
+                        .size(10.0)));
+                
+                ui.add(egui::Label::new(&img.size));
                 ui.add(egui::Separator::default());
 
                 /////////////////////////////////////////
@@ -46,11 +109,12 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
                 
-                match img.artist.clone().as_str()
+                let artist = display_vector(ui, &img.artists, &mut boxes.artist, VectorType::Artist);
+
+                if !artist.is_none() && tag_action.is_none()
                 {
-                    "" => ui.add(egui::Label::new("Unknown")),
-                    other => ui.add(egui::Label::new(other)),
-                };
+                    tag_action = artist;
+                }
 
                 ui.add(egui::Separator::default());
 
@@ -59,12 +123,13 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
                 ui.add(egui::Label::new(RichText::new("source")
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
-                
-                match img.link.clone().as_str()
+
+                let link = display_vector(ui, &img.links, &mut boxes.link, VectorType::Link);
+
+                if !link.is_none() && tag_action.is_none()
                 {
-                    "" => ui.add(egui::Label::new("Unknown")),
-                    other => ui.add(egui::Label::new(other)),
-                };
+                    tag_action = link;
+                }
 
                 ui.add(egui::Separator::default());
                 ui.add(egui::Separator::default());
@@ -74,35 +139,12 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
                 ui.add(egui::Label::new(RichText::new("tags")
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
-
-                for tag in &img.tags
-                {
-                    // TODO: add ability to delete tags
-                    // TODO: add ability to copy tags
-                    let resp_tag = ui.add(egui::Label::new("+ - ".to_string() + tag)
-                                     .sense(egui::Sense::click()));
                 
-                    resp_tag.context_menu(|ui| {
-                        if ui.button("Delete tag").clicked() 
-                        {
-                            let _ = tag_action.insert(Action::TagDel);
-                            selected_data.push_str(tag);
-                            ui.close_menu();
-                        }
-                    });
-                }
-
-                // TODO: add ability to add tags
-                let resp_search = ui.add(
-                        egui::TextEdit::singleline(&mut boxes.tag).hint_text("add tag")
-                        .frame(false)
-                    );
- 
-                if resp_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
+                let tag = display_vector(ui, &img.tags, &mut boxes.tag, VectorType::Tag);
+                
+                if !tag.is_none() && tag_action.is_none()
                 {
-                    let _ = tag_action.insert(Action::TagAdd);
-                    selected_data = boxes.tag.clone();
-                    boxes.tag.clear()
+                    tag_action = tag;
                 }
             });
         });
@@ -111,11 +153,11 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
 
     match tag_action.unwrap()
     {
-        Action::TagAdd => img_data.add_tag(main_img, &selected_data),
-        Action::TagDel => img_data.del_tag(main_img, &selected_data),
-        Action::LinkAdd => (),
-        Action::LinkDel => (),
-        Action::ArtistAdd => (),
-        Action::ArtistDel => (),
+        Action::TagAdd(x) => img_data.add_tag(main_img, &x),
+        Action::TagDel(x) => img_data.del_tag(main_img, &x),
+        Action::LinkAdd(x) => img_data.add_link(main_img, &x),
+        Action::LinkDel(x) => img_data.del_link(main_img, &x),
+        Action::ArtistAdd(x) => img_data.add_artist(main_img, &x),
+        Action::ArtistDel(x) => img_data.del_artist(main_img, &x),
     };
 }

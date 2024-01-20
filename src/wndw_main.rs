@@ -3,12 +3,6 @@ use eframe::egui::Vec2;
 use crate::data::Data;
 use crate::image::{Image, Status, Index};
 
-pub struct Imgloc
-{
-    pub scale: egui::Vec2,
-    pub uv: egui::Rect, 
-}
-
 fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
 {
     let img_size = img.full_texture.as_ref().unwrap().size_vec2();
@@ -23,7 +17,7 @@ fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
             if scale.is_none()
             {
                 let x = if img_size.x > ui_size.x {ui_size.x} else {img_size.x};
-                scale.insert(x / img_size.x); 
+                let _ = scale.insert(x / img_size.x); 
             }
             else
             {
@@ -97,6 +91,7 @@ pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, main_img: &Index) -> (
                     let texture = img.full_texture.clone().unwrap();
                     let scale = calc_scale(ui, img);
                     
+                    // TODO: zooming in currently cuts of left side of image.
                     ui.put(window_area, egui::Image::new(&texture)
                             .fit_to_exact_size(scale));
 
