@@ -13,6 +13,16 @@ pub struct Exiftool
     stop_tx: std::sync::mpsc::Sender<String>, 
 }
 
+impl Drop for Exiftool {
+    fn drop(&mut self) 
+    {
+        let command = "-stay_open\nFalse\n".to_string();
+        self.stdin.write(command.as_bytes()).unwrap();
+
+        let _ = self.stop_tx.send("".to_string());;
+    }
+}
+
 impl Exiftool 
 {
     pub fn new() -> Exiftool

@@ -11,7 +11,7 @@ fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
 
     match ui.input(|i| i.zoom_delta())
     {
-        1.0 => (),
+        x if x == 1.0 => (),
         scroll =>
         {
             if scale.is_none()
@@ -24,8 +24,8 @@ fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
                 match scroll 
                 {
                     // make scaling non-linear to better handle extreme scaling?
-                    0.0..=1.0  => scale.insert(f32::max(0.05, scale.unwrap() - 0.05)),
-                    _          => scale.insert(f32::min(50.0, scale.unwrap() + 0.05)),
+                    x if x < 1.0  => scale.insert(f32::max(0.05, scale.unwrap() - 0.05)),
+                    _             => scale.insert(f32::min(50.0, scale.unwrap() + 0.05)),
                 };
 
             };
@@ -90,8 +90,13 @@ pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, main_img: &Index) -> (
                 {
                     let texture = img.full_texture.clone().unwrap();
                     let scale = calc_scale(ui, img);
+                    let ui_size = ui.available_size();
                     
-                    // TODO: zooming in currently cuts of left side of image.
+                    let x = if scale.x > ui_size.x {scale.x} else {ui_size.x};
+                    let y = if scale.y > ui_size.y {scale.y} else {ui_size.y};
+                    let window_area = egui::Rect{min:ui.next_widget_position(), 
+                        max:ui.next_widget_position() + Vec2{x:x, y:y}};
+
                     ui.put(window_area, egui::Image::new(&texture)
                             .fit_to_exact_size(scale));
 
@@ -100,7 +105,7 @@ pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, main_img: &Index) -> (
                 Status::Error => 
                 { 
                     let msg = "error loading ".to_string() + &img.file;
-                    ui.add(egui::Label::new(&msg)); 
+                    ui.put(window_area, egui::Label::new(&msg));
                 }
             }
         });
