@@ -2,6 +2,7 @@ use serde_json::Value;
 use serde_json::json;
 use crate::image::{Image, Index};
 use crate::exiftool::Exiftool;
+use std::collections::HashMap;
 
 pub struct Folder 
 {
@@ -10,18 +11,11 @@ pub struct Folder
     pub images: Vec<Image>,
 }
 
-// TODO: implement tags
-// pub struct TagList
-// {
-//     pub tag: String,
-//     pub images: Vec<&Image>
-// }
-
 pub struct Data 
 {
     exif: Exiftool, 
     pub folders: Vec<Folder>,
-    // pub taglist: HashMap<TagList>,
+    pub taglist: HashMap::<String, Vec<Index>>,
 }
 
 impl Data 
@@ -30,9 +24,10 @@ impl Data
     {
         let mut exif = Exiftool::new();
         let mut data = Vec::<Folder>::new();
-        for path in paths
+        let mut taglist = HashMap::<String, Vec<Index>>::new();
+        for (i, path) in paths.iter().enumerate()
         {
-            let result = Self::get_folder_data(&path, &mut exif);
+            let result = Self::get_folder_data(&path, i, &mut exif, &mut taglist);
             match result
             {
                 Ok(x) => data.push(x),
@@ -40,8 +35,12 @@ impl Data
             };
         }
 
-        Data { folders:data, exif:exif}
+        Data { folders:data, exif:exif, taglist:taglist}
     }
+
+    ///////////////////
+    // data building //
+    ///////////////////
 
     fn read_json(input: &String) -> Vec<String>
     {
@@ -86,7 +85,7 @@ impl Data
     }
 
     // TODO: test non-existant folder
-    fn get_folder_data(path: &String, exif: &mut Exiftool) ->  Result<Folder, String>
+    fn get_folder_data(path: &String, index: usize, exif: &mut Exiftool, taglist: &mut HashMap::<String, Vec<Index>>) ->  Result<Folder, String>
     {
         let mut folder = Folder{
             path: path.to_string(), 
@@ -108,18 +107,85 @@ impl Data
         };
 
         // TODO: handle in type->alphabetical order
+        let mut img_index = 0;
         for value in json.as_array().unwrap()
         {
             match Self::construct_image(value)
             {
-                Ok(x) => folder.images.push(x),
+                Ok(x) => 
+                {
+                    let index = Index{folder:index, image:img_index};
+                    Self::update_tags(&x.artists, &index, taglist);
+                    Self::update_tags(&x.tags, &index, taglist);
+                    folder.images.push(x);
+                    img_index += 1
+                }
                 Err(_x) => println!("error with image"),
             };
         }
 
         return Ok(folder);
     } 
+
+    //////////////
+    // taglist //
+    /////////////
+
+    fn update_tags(tags: &Vec<String>, index: &Index, taglist: &mut HashMap::<String, Vec<Index>>)
+    {
+        for tag in tags
+        {
+            taglist.entry(tag.clone()).or_default().push(index.clone());
+        }
+    }
+
+    fn add_taglist(taglist: &mut HashMap::<String, Vec<Index>>, img_index: &Index, tag: &String) -> ()
+    {
+        match taglist.get_mut(tag)
+        {
+            Some(vector) =>
+            {
+                match vector.iter().position(|x| x == img_index)
+                {
+                    Some(_) => (),
+                    None =>
+                    {
+                        // TODO: is sorting necessary?
+                        vector.push(img_index.clone());
+                    },
+                }
+            },
+            None => 
+            {
+                taglist.entry(tag.clone()).or_default().push(img_index.clone());
+            },
+        };
+    }
+
+    fn rem_taglist(taglist: &mut HashMap::<String, Vec<Index>>, img_index: &Index, tag: &String) -> ()
+    {
+        match taglist.get_mut(tag)
+        {
+            Some(vector) =>
+            {
+                match vector.iter().position(|x| x == img_index)
+                {
+                    Some(index) =>
+                    {
+                        vector.remove(index);
+                        if vector.len() == 0 {taglist.remove(tag);}
+                    },
+                    None => (),
+                }
+            },
+            None => (),
+        };
+    }
     
+    ///////////////////
+    // changing tags //
+    ///////////////////
+
     pub fn get_nr_imgs(&self) -> usize
     {
         let mut count = 0;
@@ -149,7 +215,10 @@ impl Data
     pub fn del_tag(&mut self, img_index: &Index, tag: &String) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
+
         img.remove_tag(tag);
+        Self::rem_taglist(&mut self.taglist, img_index, tag);
+
         let output = Self::build_string(&img.tags);
         let _ = self.exif.set_usercomment(&img.file, &output);
     }
@@ -157,7 +226,10 @@ impl Data
     pub fn add_tag(&mut self, img_index: &Index, tag: &String)
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
+        
         img.add_tag(tag);
+        Self::add_taglist(&mut self.taglist, img_index, tag);
+
         let output = Self::build_string(&img.tags);
         let _ = self.exif.set_usercomment(&img.file, &output);
     }
@@ -181,7 +253,10 @@ impl Data
     pub fn del_artist(&mut self, img_index: &Index, artist: &String) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
+
         img.remove_artist(artist);
+        Self::rem_taglist(&mut self.taglist, img_index, artist);
+
         let output = Self::build_string(&img.artists);
         let _ = self.exif.set_artist(&img.file, &output);
     }
@@ -189,7 +264,10 @@ impl Data
     pub fn add_artist(&mut self, img_index: &Index, artist: &String)
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
+
         img.add_artist(artist);
+        Self::add_taglist(&mut self.taglist, img_index, artist);
+        
         let output = Self::build_string(&img.artists);
         let _ = self.exif.set_artist(&img.file, &output);
     }

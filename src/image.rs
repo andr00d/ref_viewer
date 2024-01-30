@@ -12,6 +12,7 @@ pub enum Status
 }
 
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Index
 {
     pub folder: usize,

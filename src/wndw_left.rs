@@ -11,8 +11,26 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
     .resizable(false)
     .show(ui, |ui| {
         
+        
         let resp_search = ui.add(egui::TextEdit::singleline(search).hint_text("search tags"));
         ui.add(egui::Separator::default());
+
+
+        if resp_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
+        {
+            // not very good code. i'll clean it up later. 
+            let mut tags: Vec<String> = search.split_whitespace().map(str::to_string).collect();
+            let mut itags = tags.clone();
+            tags.retain(|x| !x.starts_with("-"));
+            itags.retain(|x| x.starts_with("-"));
+            for part in &mut itags{part.remove(0);}
+
+            for part in itags
+            {
+                println!("{}", part);
+            }
+        }
+
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             // TODO: loop only over subset images to speed up startup for large folders

@@ -19,7 +19,7 @@ impl Drop for Exiftool {
         let command = "-stay_open\nFalse\n".to_string();
         self.stdin.write(command.as_bytes()).unwrap();
 
-        let _ = self.stop_tx.send("".to_string());;
+        let _ = self.stop_tx.send("".to_string());
     }
 }
 
