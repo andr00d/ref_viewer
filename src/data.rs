@@ -3,6 +3,7 @@ use serde_json::json;
 use crate::image::{Image, Index};
 use crate::exiftool::Exiftool;
 use std::collections::HashMap;
+use core::cmp::Ordering;
 
 pub struct Folder 
 {
@@ -126,6 +127,75 @@ impl Data
 
         return Ok(folder);
     } 
+
+    pub fn build_vector(&self, tags: Vec<String>, itags: Vec<String>) -> Vec<Index>
+    {
+        let mut imglist = Vec::new();
+
+        match tags.len()
+        {
+            0 => 
+            {
+                for (f, folder) in self.folders.iter().enumerate()
+                {
+                    for i in 0..folder.images.len()
+                    {
+                        imglist.push(Index{folder:f, image:i});
+                    }
+                } 
+            }
+            _ =>
+            {
+                let mut alltags = Vec::new();
+
+                for tag in &tags
+                {
+                    match self.taglist.get(tag)
+                    {
+                        Some(vec) => {alltags.append(&mut vec.clone());},
+                        None => (),
+                    }
+                }
+
+                let mut tagcounts = HashMap::new();
+                for item in alltags {*tagcounts.entry(item).or_insert(0) += 1;}
+                for (tag, count) in tagcounts {if count == tags.len() {imglist.push(tag);}}
+
+                imglist.sort_by(|a, b| {
+                    if a.folder < b.folder {Ordering::Less} 
+                    else if a.folder > b.folder {Ordering::Greater} 
+                    else 
+                    {
+                        if a.image < b.image {Ordering::Less} 
+                        else if a.image > b.image {Ordering::Greater} 
+                        else {Ordering::Equal}                    
+                    }
+                });
+            }
+        }
+
+        
+        for tag in itags
+        {
+            match self.taglist.get(&tag)
+            {
+                Some(vec) => 
+                {
+                    for index in vec
+                    {
+                        match imglist.iter().position(|x| x == index)
+                        {
+                            Some(index) => {imglist.remove(index);},
+                            None => {},
+                        };
+                    }
+                },
+                None => (),
+            }
+        }
+
+        return imglist;
+    }
 
     //////////////
     // taglist //

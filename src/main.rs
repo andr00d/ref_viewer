@@ -10,6 +10,7 @@ use eframe::egui;
 use crate::data::Data;
 use crate::image::Index;
 use crate::wndw_right::WndwRight;
+use crate::wndw_left::WndwLeft;
 
 fn main() -> Result<(), eframe::Error> 
 {
@@ -34,8 +35,8 @@ struct RefViewer
 {
     img_data: Data,
     main_img: Index,
-    search: String,
-    text_right: WndwRight,
+    data_left: WndwLeft,
+    data_right: WndwRight,
 }
 
 impl Default for RefViewer{
@@ -44,11 +45,15 @@ impl Default for RefViewer{
         let mut folders: Vec<String> = env::args().collect();
         folders.remove(0);
 
+        let img_data = Data::new(folders);
+        let imagelist = img_data.build_vector(Vec::new(), Vec::new());
+
         Self { 
-            img_data: Data::new(folders),
+            img_data: img_data,
             main_img: Index{folder: 0, image: 0},
-            search: "".to_string(),
-            text_right: WndwRight{ artist: "".to_string(), 
+            data_left: WndwLeft{search: "".to_string(),
+                                results: imagelist},
+            data_right: WndwRight{ artist: "".to_string(), 
                                     link: "".to_string(), 
                                     tag: "".to_string()},
         }
@@ -58,16 +63,16 @@ impl Default for RefViewer{
 impl eframe::App for RefViewer{
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
-        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.main_img, &mut self.search);
-
-        match self.img_data.get_nr_imgs()
+        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.main_img, &mut self.data_left);
+    
+        if self.img_data.get_nr_imgs() == 0 || self.data_left.results.len() == 0
         {
-            0 => {wndw_main::wndw_main_empty(ui);}
-            _ =>
-            {
-                wndw_right::wndw_right(ui, &mut self.img_data, &mut self.main_img, &mut self.text_right);
-                wndw_main::wndw_main(ui, &mut self.img_data, &mut self.main_img);
-            }
+            wndw_main::wndw_main_empty(ui);
+        }
+        else
+        {
+            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.main_img, &mut self.data_right);
+            wndw_main::wndw_main(ui, &mut self.img_data, &mut self.main_img);
         }
     }
 }

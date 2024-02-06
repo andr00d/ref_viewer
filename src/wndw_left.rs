@@ -2,7 +2,14 @@ use eframe::egui::{self, Button};
 use crate::image::{Status, Index};
 use crate::data::Data;
 
-pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index, search: &mut String ) -> ()
+pub struct WndwLeft
+{
+    pub search: String,
+    pub results: Vec<Index>,
+}
+
+
+pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index, data: &mut WndwLeft) -> ()
 {
     let old_index = Index{folder: main_index.folder, image: main_index.image};
 
@@ -11,29 +18,31 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
     .resizable(false)
     .show(ui, |ui| {
         
-        
-        let resp_search = ui.add(egui::TextEdit::singleline(search).hint_text("search tags"));
+        let resp_search = ui.add(egui::TextEdit::singleline(&mut data.search).hint_text("search tags"));
         ui.add(egui::Separator::default());
 
 
         if resp_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
         {
-            // not very good code. i'll clean it up later. 
-            let mut tags: Vec<String> = search.split_whitespace().map(str::to_string).collect();
+            let mut tags: Vec<String> = data.search.split_whitespace().map(str::to_string).collect();
             let mut itags = tags.clone();
+
             tags.retain(|x| !x.starts_with("-"));
             itags.retain(|x| x.starts_with("-"));
             for part in &mut itags{part.remove(0);}
 
-            for part in itags
+            data.results = img_data.build_vector(tags, itags);
+            if !data.results.contains(&old_index) && data.results.len() > 0
             {
-                println!("{}", part);
+                main_index.folder = data.results[0].folder;
+                main_index.image = data.results[0].image;
             }
         }
 
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             // TODO: loop only over subset images to speed up startup for large folders
+            let mut imglist_index = 0;
             for (i_folder, folder) in img_data.folders.iter_mut().enumerate()
             {
                 // make folders collabsible
@@ -45,8 +54,15 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
                 if folder.collapsed {continue;}
 
                 // display folder images
-                for (i_image, image) in folder.images.iter_mut().enumerate()
+                for i in imglist_index..data.results.len()
                 {
+                    if data.results[i].folder > i_folder {break;}
+                    if data.results[i].folder < i_folder {imglist_index += 1; continue;}
+
+                    let i_image = data.results[imglist_index].image;
+                    let image = &mut folder.images[i_image];
+                    imglist_index += 1;
+
                     match image.thumb_state()
                     {
                         Status::Unloaded => 
