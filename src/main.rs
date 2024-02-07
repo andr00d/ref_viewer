@@ -22,7 +22,7 @@ fn main() -> Result<(), eframe::Error>
     };
 
     eframe::run_native(
-        "ref finder",
+        "ref viewer",
         options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
