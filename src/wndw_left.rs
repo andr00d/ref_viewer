@@ -1,5 +1,7 @@
+use std::time::Instant;
 use eframe::egui::{self, Button};
 use crate::image::{Status, Index};
+use crate::shared::Shared;
 use crate::data::Data;
 
 pub struct WndwLeft
@@ -9,9 +11,9 @@ pub struct WndwLeft
 }
 
 
-pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index, data: &mut WndwLeft) -> ()
+pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared, data: &mut WndwLeft) -> ()
 {
-    let old_index = Index{folder: main_index.folder, image: main_index.image};
+    let old_index = Index{folder: data_shared.main_img.folder, image: data_shared.main_img.image};
 
     egui::SidePanel::left("left_panel")
     .exact_width(100.0)
@@ -34,8 +36,8 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
             data.results = img_data.build_vector(tags, itags);
             if !data.results.contains(&old_index) && data.results.len() > 0
             {
-                main_index.folder = data.results[0].folder;
-                main_index.image = data.results[0].image;
+                data_shared.main_img.folder = data.results[0].folder;
+                data_shared.main_img.image = data.results[0].image;
             }
         }
 
@@ -92,8 +94,10 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
 
                             if img_response.clicked()
                             {
-                                main_index.folder = i_folder;
-                                main_index.image = i_image;
+                                data_shared.main_img.folder = i_folder;
+                                data_shared.main_img.image = i_image;
+                                data_shared.last_update = Instant::now();
+                                data_shared.frame_index = 0;
                             }
                         }
 
@@ -110,7 +114,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, main_index: &mut Index
         });     
     });
 
-    if old_index != *main_index
+    if old_index != data_shared.main_img
     {
         img_data.folders[old_index.folder].images[old_index.image].clear_full();
     }

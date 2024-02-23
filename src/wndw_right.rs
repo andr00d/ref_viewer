@@ -1,7 +1,7 @@
 use eframe::egui;
 use egui::widget_text::RichText;
 use crate::data::Data;
-use crate::image::Index;
+use crate::shared::Shared;
 
 pub struct WndwRight
 {
@@ -37,7 +37,7 @@ fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String,
         {
             VectorType::Link => ui.add(egui::Label::new(item)
                                   .sense(egui::Sense::click())),
-            _ => ui.add(egui::Label::new("+ - ".to_string() + item)
+            _ => ui.add(egui::Label::new(" +  -  ".to_string() + item)
                    .sense(egui::Sense::click())),
         };
     
@@ -75,9 +75,9 @@ fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String,
     return result;
 }
 
-pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, boxes: &mut WndwRight) -> ()
+pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &Shared, boxes: &mut WndwRight) -> ()
 {
-    let img = &img_data.folders[main_img.folder].images[main_img.image];
+    let img = &img_data.folders[data_shared.main_img.folder].images[data_shared.main_img.image];
     let mut tag_action = None;
 
     egui::SidePanel::right("right_panel")
@@ -153,11 +153,11 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, main_img: &Index, box
 
     match tag_action.unwrap()
     {
-        Action::TagAdd(x) => img_data.add_tag(main_img, &x),
-        Action::TagDel(x) => img_data.del_tag(main_img, &x),
-        Action::LinkAdd(x) => img_data.add_link(main_img, &x),
-        Action::LinkDel(x) => img_data.del_link(main_img, &x),
-        Action::ArtistAdd(x) => img_data.add_artist(main_img, &x),
-        Action::ArtistDel(x) => img_data.del_artist(main_img, &x),
+        Action::TagAdd(x) => img_data.add_tag(&data_shared.main_img, &x),
+        Action::TagDel(x) => img_data.del_tag(&data_shared.main_img, &x),
+        Action::LinkAdd(x) => img_data.add_link(&data_shared.main_img, &x),
+        Action::LinkDel(x) => img_data.del_link(&data_shared.main_img, &x),
+        Action::ArtistAdd(x) => img_data.add_artist(&data_shared.main_img, &x),
+        Action::ArtistDel(x) => img_data.del_artist(&data_shared.main_img, &x),
     };
 }

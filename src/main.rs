@@ -1,16 +1,19 @@
 mod wndw_left;
 mod wndw_right;
 mod wndw_main;
+mod shared;
 mod exiftool;
 mod data;
 mod image;
 
 use std::env;
+use std::time::Instant;
 use eframe::egui;
 use crate::data::Data;
 use crate::image::Index;
 use crate::wndw_right::WndwRight;
 use crate::wndw_left::WndwLeft;
+use crate::shared::{Shared, Textbox};
 
 fn main() -> Result<(), eframe::Error> 
 {
@@ -34,7 +37,7 @@ fn main() -> Result<(), eframe::Error>
 struct RefViewer
 {
     img_data: Data,
-    main_img: Index,
+    data_shared: Shared,
     data_left: WndwLeft,
     data_right: WndwRight,
 }
@@ -50,7 +53,10 @@ impl Default for RefViewer{
 
         Self { 
             img_data: img_data,
-            main_img: Index{folder: 0, image: 0},
+            data_shared: Shared{main_img: Index{folder: 0, image: 0},
+                                active_input: Textbox::Search,
+                                last_update: Instant::now(),
+                                frame_index: 0},
             data_left: WndwLeft{search: "".to_string(),
                                 results: imagelist},
             data_right: WndwRight{ artist: "".to_string(), 
@@ -63,7 +69,7 @@ impl Default for RefViewer{
 impl eframe::App for RefViewer{
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
-        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.main_img, &mut self.data_left);
+        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_left);
     
         if self.img_data.get_nr_imgs() == 0 || self.data_left.results.len() == 0
         {
@@ -71,8 +77,8 @@ impl eframe::App for RefViewer{
         }
         else
         {
-            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.main_img, &mut self.data_right);
-            wndw_main::wndw_main(ui, &mut self.img_data, &mut self.main_img);
+            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
+            wndw_main::wndw_main(ui, &mut self.img_data, &mut self.data_shared);
         }
     }
 }

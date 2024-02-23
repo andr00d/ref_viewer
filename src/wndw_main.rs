@@ -1,11 +1,14 @@
+use std::time::{Instant, Duration};
 use eframe::egui;
 use eframe::egui::Vec2;
 use crate::data::Data;
-use crate::image::{Image, Status, Index};
+use crate::image::{Image, Status};
+use crate::shared::Shared;
+
 
 fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
 {
-    let img_size = img.full_texture.as_ref().unwrap().size_vec2();
+    let img_size = img.full_texture[0].image.size_vec2();
     let ui_size = ui.available_size();
     let scale = &mut img.full_scale;
 
@@ -62,9 +65,9 @@ pub fn wndw_main_empty(ui: &egui::Context) -> ()
     });
 }
 
-pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, main_img: &Index) -> ()
+pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared) -> ()
 {
-    let img = &mut img_data.folders[main_img.folder].images[main_img.image];
+    let img = &mut img_data.folders[data_shared.main_img.folder].images[data_shared.main_img.image];
 
     egui::CentralPanel::default().show(ui, |ui| {
 
@@ -88,7 +91,28 @@ pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, main_img: &Index) -> (
                 
                 Status::Loaded => 
                 {
-                    let texture = img.full_texture.clone().unwrap();
+                    let texture = match img.full_texture.len()
+                    {
+                        1 => img.full_texture[0].image.clone(),
+                        _ => 
+                        {
+                            let delay = img.full_texture[data_shared.frame_index].delay;
+                            
+                            if  Instant::now().duration_since(data_shared.last_update).as_millis() > delay.into()
+                            {
+                                data_shared.frame_index = (data_shared.frame_index + 1) % img.full_texture.len();
+                                data_shared.last_update = Instant::now();
+                                ui.ctx().request_repaint();
+                            }
+                            else
+                            {
+                                ui.ctx().request_repaint_after(Duration::from_millis(delay.into()));
+                            }
+
+                            img.full_texture[data_shared.frame_index].image.clone()
+                        },
+                    };
+
                     let scale = calc_scale(ui, img);
                     let ui_size = ui.available_size();
                     

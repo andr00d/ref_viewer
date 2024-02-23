@@ -1,6 +1,10 @@
-use eframe::egui::{Ui, ColorImage, TextureHandle};
+use std::path::Path;
 use std::thread::{self, JoinHandle};
+use eframe::egui::{Ui, ColorImage, TextureHandle};
 use image::imageops::FilterType;
+use image::codecs::gif::GifDecoder;
+use image::codecs::webp::WebPDecoder;
+use image::AnimationDecoder;
 
 #[derive(PartialEq)]
 pub enum Status 
@@ -21,6 +25,16 @@ pub struct Index
     pub image: usize, 
 }
 
+pub struct FrameData {
+    pub image: ColorImage,
+    pub delay: u32,
+}
+
+pub struct TextureData {
+    pub image: TextureHandle,
+    pub delay: u32,
+}
+
 pub struct Image
 {
     pub file: String,
@@ -34,10 +48,10 @@ pub struct Image
     thumb_thread: Option<JoinHandle<Result<ColorImage, String>>>,
     thumb_state: Status,
 
-    // full image
-    pub full_texture: Option<TextureHandle>,
+    // full view
+    pub full_texture: Vec<TextureData>,
     pub full_scale: Option<f32>,
-    full_thread: Option<JoinHandle<Result<ColorImage, String>>>,
+    full_thread: Option<JoinHandle<Result<Vec<FrameData>, String>>>,
     full_state: Status,
 }
 
@@ -63,14 +77,14 @@ impl Image
         thumb_thread: None,
         thumb_state: Status::Unloaded,
 
-        full_texture: None,
+        full_texture: Vec::new(),
         full_scale: None, 
         full_thread: None,
         full_state: Status::Unloaded,
         }
     }
 
-    fn create_thr(path: String, thumbnail: bool) -> JoinHandle<Result<ColorImage, String>>
+    fn create_thr_thumb(path: String) -> JoinHandle<Result<ColorImage, String>>
     {
         thread::spawn(move || -> Result<ColorImage, String>
         {
@@ -85,13 +99,8 @@ impl Image
                 Ok(x) => x,
                 Err(_x) => return Err(format!("Error when decoding {}.", path)),
             };
-
-            let image = match thumbnail
-            {
-                true => decoded.resize(100, 100, FilterType::Nearest),
-                false => decoded,
-            };
-
+ 
+            let image = decoded.resize(100, 100, FilterType::Nearest);
             let size = [image.width() as _, image.height() as _];
             let image_buffer = image.to_rgba8();
             let pixels = image_buffer.as_flat_samples();
@@ -99,6 +108,91 @@ impl Image
             Ok(egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice(),))
         })
     }
+
+    fn create_thr_full(path: String) -> JoinHandle<Result<Vec<FrameData>, String>>
+    {
+        thread::spawn(move || -> Result<Vec<FrameData>, String>
+        {
+            let file = match image::io::Reader::open(path.clone())
+            {
+                Ok(x) => x,
+                Err(_x) => return Err(format!("{} does not exist.", path)),
+            };
+
+            let mut images = Vec::<FrameData>::new();
+            // handle webp and gif animations besides normal images by dumping everything into a vector
+            match Path::new(&path).extension().unwrap().to_str().unwrap()
+            {
+                "webp" => 
+                {
+                    // TPDP: check further in specifics of has_animation
+                    let decoder = match WebPDecoder::new(file.into_inner())
+                    {
+                        Ok(x) => x,
+                        Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                    };
+
+                    let frames = match decoder.into_frames().collect_frames()
+                    {
+                        Ok(x) => x,
+                        Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                    };
+
+                    for frame in frames
+                    {
+                        let size = [frame.buffer().width() as _, frame.buffer().height() as _];
+                        let img = egui::ColorImage::from_rgba_unmultiplied(size, frame.buffer());
+                        let (numerator, denominator) = frame.delay().numer_denom_ms();
+                        let delay = numerator / denominator; 
+                        images.push(FrameData{image: img, delay: delay});
+                    };
+                },
+                "gif" => 
+                {
+                    let decoder = match GifDecoder::new(file.into_inner())
+                    {
+                        Ok(x) => x,
+                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                    };
+
+                    let frames = match decoder.into_frames().collect_frames()
+                    {
+                        Ok(x) => x,
+                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                    };
+
+                    for frame in frames
+                    {
+                        let size = [frame.buffer().width() as _, frame.buffer().height() as _];
+                        let img = egui::ColorImage::from_rgba_unmultiplied(size, frame.buffer());
+                        let (numerator, denominator) = frame.delay().numer_denom_ms();
+                        let delay = numerator / denominator;
+                        println!("delay for frame in ms is {}", delay);
+                        images.push(FrameData{image: img, delay: delay});
+                    };
+                    
+                },
+                _ => 
+                {
+                    match file.decode()
+                    {
+                        Ok(x) =>
+                        {
+                            let size = [x.width() as _, x.height() as _];
+                            let image_buffer = x.to_rgba8();
+                            let pixels = image_buffer.as_flat_samples();
+                            let image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+                            images.push(FrameData{image: image, delay: 0});
+                        },
+                        Err(_x) => return Err(format!("malformed image file: {}.", path)),
+                    }
+                }, 
+            }
+
+            Ok(images)
+        })
+    }
+
 
     ////////////////////////
     // (de)loading images //
@@ -108,7 +202,7 @@ impl Image
     {
         if self.thumb_state == Status::Loading {println!("tried to load thumb twice");}
 
-        self.thumb_thread = Some(Self::create_thr(self.file.clone(), true));
+        self.thumb_thread = Some(Self::create_thr_thumb(self.file.clone()));
         self.thumb_state = Status::Loading;
         return true
     }
@@ -117,7 +211,7 @@ impl Image
     {
         if self.full_state == Status::Loading {println!("tried to load image twice");}
 
-        self.full_thread = Some(Self::create_thr(self.file.clone(), false));
+        self.full_thread = Some(Self::create_thr_full(self.file.clone()));
         self.full_state = Status::Loading;
         return true
     }
@@ -126,52 +220,32 @@ impl Image
     {
         if self.full_state != Status::Loaded {return false;}
 
-        self.full_texture = None;
+        self.full_texture = Vec::new();
         self.full_state = Status::Unloaded;
         return true;
     }
 
-    fn poll_load(&mut self, ui: &mut Ui, thumbnail: bool) -> ()
+    pub fn poll_thumb(&mut self, ui: &mut Ui) -> ()
     {
-        let thread = match thumbnail
+        if self.thumb_thread.as_ref().is_none()
         {
-            true => &mut self.thumb_thread,
-            false => &mut self.full_thread,
-        };
-
-        let state = match thumbnail
-        {
-            true => &mut self.thumb_state,
-            false => &mut self.full_state,
-        };
-
-        if thread.as_ref().is_none()
-        {
-            *state = Status::Unloaded;
-            match thumbnail
-            {
-                true => println!("tried to poll thumbnail before creating it ({})", self.file),
-                false => println!("tried to poll image before creating it ({})", self.file),
-            };
+            self.thumb_state = Status::Unloaded;
+            println!("tried to poll thumbnail before creating it ({})", self.file);
             return;
         }
 
-        if !thread.as_ref().unwrap().is_finished()
-        {
-            return;
-        }
+        if !self.thumb_thread.as_ref().unwrap().is_finished() {return;}
 
-        let thread_result = match thread.take().unwrap().join()
+        let thread_result = match self.thumb_thread.take().unwrap().join()
         {
             Ok(x) => x,
             Err(_x) => 
             {
-                println!("Thread error for {}", self.file);
-                *state = Status::Error;
-                return
+                println!("Thread error when loading thumb for {}", self.file);
+                self.thumb_state = Status::Error;
+                return;
             }
         };
-
 
         let result = match thread_result
         {
@@ -179,34 +253,59 @@ impl Image
             Err(_x) => 
             {
                 println!("image loading/scaling error for {}", self.file);
-                *state = Status::Error;
+                self.thumb_state = Status::Error;
                 return
             }
         };
-
-        let texture = match thumbnail
-        {
-            true => &mut self.thumb_texture,
-            false => &mut self.full_texture,
-        };
-
-        *texture = Some(ui.ctx().load_texture(
-                        self.file.clone(),
-                        result,
-                        Default::default(), 
-                    ));
-
-        *state = Status::Loaded;
-    }
-
-    pub fn poll_thumb(&mut self, ui: &mut Ui) -> ()
-    {
-        Self::poll_load(self, ui, true);
+        
+        let texture = ui.ctx().load_texture(self.file.clone(), result, Default::default());
+        self.thumb_texture = Some(texture);
+        self.thumb_state = Status::Loaded;
     }
 
     pub fn poll_full(&mut self, ui: &mut Ui) -> ()
     {
-        Self::poll_load(self, ui, false);
+        if self.full_thread.as_ref().is_none()
+        {
+            self.full_state = Status::Unloaded;
+            println!("tried to poll image before creating it ({})", self.file);
+            return;
+        }
+
+        if !self.full_thread.as_ref().unwrap().is_finished() {return;}
+
+        let thread_result = match self.full_thread.take().unwrap().join()
+        {
+            Ok(x) => x,
+            Err(_x) => 
+            {
+                println!("Thread error when loading image for {}", self.file);
+                self.full_state = Status::Error;
+                return
+            }
+        };
+
+        let result = match thread_result
+        {
+            Ok(x) => x,
+            Err(_x) => 
+            {
+                println!("image loading error for {}", self.file);
+                self.full_state = Status::Error;
+                return
+            }
+        };
+
+        let mut buffer = Vec::new();
+
+        for frame in result
+        {
+            let texture = ui.ctx().load_texture(self.file.clone(), frame.image, Default::default());
+            buffer.push(TextureData{image: texture, delay: frame.delay});
+        }
+
+        self.full_texture = buffer;
+        self.full_state = Status::Loaded;
     }
 
     ////////////////

@@ -1,9 +1,9 @@
+use std::collections::HashMap;
+use core::cmp::Ordering;
 use serde_json::Value;
 use serde_json::json;
 use crate::image::{Image, Index};
 use crate::exiftool::Exiftool;
-use std::collections::HashMap;
-use core::cmp::Ordering;
 
 pub struct Folder 
 {
