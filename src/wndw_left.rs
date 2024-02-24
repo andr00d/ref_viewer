@@ -3,6 +3,7 @@ use eframe::egui::{self, Button};
 use crate::image::{Status, Index};
 use crate::shared::Shared;
 use crate::data::Data;
+use crate::Textbox;
 
 pub struct WndwLeft
 {
@@ -41,6 +42,8 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
             }
         }
 
+        if resp_search.gained_focus(){data_shared.active_input = Textbox::Search;}
+        if data_shared.active_input == Textbox::Search {resp_search.request_focus();}
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             // TODO: loop only over subset images to speed up startup for large folders

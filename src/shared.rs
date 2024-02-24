@@ -3,6 +3,8 @@ use crate::image::Index;
 
 // data shared between two/three windows
 
+#[derive(PartialEq)]
+#[derive(Clone)]
 pub enum Textbox
 {
     Search,

@@ -2,19 +2,13 @@ use eframe::egui;
 use egui::widget_text::RichText;
 use crate::data::Data;
 use crate::shared::Shared;
+use crate::Textbox;
 
 pub struct WndwRight
 {
     pub artist: String,
     pub link: String,
     pub tag: String,
-}
-
-pub enum VectorType
-{
-    Tag,
-    Link,
-    Artist,
 }
 
 pub enum Action
@@ -27,28 +21,27 @@ pub enum Action
     ArtistDel(String),
 }
 
-fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, tagtype: VectorType) -> Option<Action>
+fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, active: &mut Textbox, boxtype: Textbox) -> Option<Action>
 {
     let mut result = None;
 
     for item in vector
     {
-        let resp_del = match tagtype
+        let resp_del = match boxtype
         {
-            VectorType::Link => ui.add(egui::Label::new(item)
-                                  .sense(egui::Sense::click())),
-            _ => ui.add(egui::Label::new(" +  -  ".to_string() + item)
-                   .sense(egui::Sense::click())),
+            Textbox::Link => ui.add(egui::Label::new(item).sense(egui::Sense::click())),
+            _ => ui.add(egui::Label::new(" +  -  ".to_string() + item).sense(egui::Sense::click())),
         };
     
         resp_del.context_menu(|ui| {
             if ui.button("Delete item").clicked() 
             {
-                let _ = match tagtype
+                match boxtype
                 {
-                    VectorType::Tag => result.insert(Action::TagDel(item.clone())),
-                    VectorType::Link => result.insert(Action::LinkDel(item.clone())),
-                    VectorType::Artist => result.insert(Action::ArtistDel(item.clone())),
+                    Textbox::Tag => result = Some(Action::TagDel(item.clone())),
+                    Textbox::Link => result = Some(Action::LinkDel(item.clone())),
+                    Textbox::Artist => result = Some(Action::ArtistDel(item.clone())),
+                    _  => (),
                 };
                 ui.close_menu();
             }
@@ -62,20 +55,23 @@ fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String,
 
     if resp_add.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
     {
-        let _ = match tagtype
+        match boxtype
         {
-            VectorType::Tag => result.insert(Action::TagAdd(textbox.clone())),
-            VectorType::Link => result.insert(Action::LinkAdd(textbox.clone())),
-            VectorType::Artist => result.insert(Action::ArtistAdd(textbox.clone())),
+            Textbox::Tag => result = Some(Action::TagAdd(textbox.clone())),
+            Textbox::Link => result = Some(Action::LinkAdd(textbox.clone())),
+            Textbox::Artist => result = Some(Action::ArtistAdd(textbox.clone())),
+            _  => (),
         };
         textbox.clear();
-        //TODO: keep focus after pressing enter
     }
+
+    if resp_add.gained_focus() {*active = boxtype.clone();}
+    if active == &boxtype {resp_add.request_focus();}
 
     return result;
 }
 
-pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &Shared, boxes: &mut WndwRight) -> ()
+pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared, boxes: &mut WndwRight) -> ()
 {
     let img = &img_data.folders[data_shared.main_img.folder].images[data_shared.main_img.image];
     let mut tag_action = None;
@@ -109,7 +105,7 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &Shared,
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
                 
-                let artist = display_vector(ui, &img.artists, &mut boxes.artist, VectorType::Artist);
+                let artist = display_vector(ui, &img.artists, &mut boxes.artist, &mut data_shared.active_input, Textbox::Artist);
 
                 if !artist.is_none() && tag_action.is_none()
                 {
@@ -124,7 +120,7 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &Shared,
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
 
-                let link = display_vector(ui, &img.links, &mut boxes.link, VectorType::Link);
+                let link = display_vector(ui, &img.links, &mut boxes.link, &mut data_shared.active_input, Textbox::Link);
 
                 if !link.is_none() && tag_action.is_none()
                 {
@@ -140,7 +136,7 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &Shared,
                         .background_color(egui::Color32::from_black_alpha(100))
                         .size(10.0)));
                 
-                let tag = display_vector(ui, &img.tags, &mut boxes.tag, VectorType::Tag);
+                let tag = display_vector(ui, &img.tags, &mut boxes.tag, &mut data_shared.active_input, Textbox::Tag);
                 
                 if !tag.is_none() && tag_action.is_none()
                 {
