@@ -36,9 +36,9 @@ fi
 
 app_dir=$HOME/.local/share/applications
 
-if [ ! -f $applications_dir/ref_viewer.desktop ]; 
+if [ ! -f $app_dir/ref_viewer.desktop ]; 
 then
-    rm $applications_dir/ref_viewer.desktop
+    rm $app_dir/ref_viewer.desktop
 fi
 
 echo "
@@ -46,10 +46,10 @@ echo "
 Type=Application
 Name=ref viewer
 Exec=$HOME/.local/bin/ref_viewer
-MimeType=inode/directory
+MimeType=inode/directory;image/gif;image/jpg;image/jpeg;image/png;image/webp
 Categories=Graphics;
 " > $app_dir/ref_viewer.desktop 
 
-update-desktop-database $applications_dir
+update-desktop-database $app_dir
 
 echo "program installed."

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use core::cmp::Ordering;
 use serde_json::Value;
 use serde_json::json;
@@ -195,6 +196,21 @@ impl Data
         }
 
         return imglist;
+    }
+
+    pub fn get_string_index(&self, path: String) -> Option<Index>
+    {
+        let img_folder = Path::new(&path).parent().unwrap().to_string_lossy().into_owned();
+        for (f, folder) in self.folders.iter().enumerate()
+        {
+            if folder.path != img_folder {continue;}
+
+            for (i, image) in folder.images.iter().enumerate()
+            {
+                if image.file == path {return Some(Index{folder:f, image:i});}
+            }
+        }
+        return None;
     }
 
     //////////////

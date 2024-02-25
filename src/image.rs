@@ -167,7 +167,6 @@ impl Image
                         let img = egui::ColorImage::from_rgba_unmultiplied(size, frame.buffer());
                         let (numerator, denominator) = frame.delay().numer_denom_ms();
                         let delay = numerator / denominator;
-                        println!("delay for frame in ms is {}", delay);
                         images.push(FrameData{image: img, delay: delay});
                     };
                     

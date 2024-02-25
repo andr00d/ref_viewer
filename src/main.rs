@@ -6,7 +6,7 @@ mod exiftool;
 mod data;
 mod image;
 
-use std::env;
+use std::path::Path;
 use std::time::Instant;
 use eframe::egui;
 use crate::data::Data;
@@ -42,31 +42,47 @@ struct RefViewer
     data_right: WndwRight,
 }
 
-impl Default for RefViewer{
+impl Default for RefViewer
+{
     fn default() -> Self 
     {
-        let mut folders: Vec<String> = env::args().collect();
+        let mut folders: Vec<String> = std::env::args().collect();
         folders.remove(0);
+        let mut imagepath = None;
+
+        for item in &mut folders 
+        {
+            let path = Path::new(&item);
+            if path.is_file() 
+            {
+                imagepath = Some(item.clone());
+                *item = path.parent().unwrap().to_string_lossy().into_owned();
+            };
+        }
 
         let img_data = Data::new(folders);
         let imagelist = img_data.build_vector(Vec::new(), Vec::new());
+        let mut index = Index{folder: 0, image: 0};
+
+        if imagepath.is_some() {index = img_data.get_string_index(imagepath.unwrap()).unwrap_or(index);}
 
         Self { 
             img_data: img_data,
-            data_shared: Shared{main_img: Index{folder: 0, image: 0},
+            data_shared: Shared{main_img: index,
                                 active_input: Textbox::Search,
                                 last_update: Instant::now(),
                                 frame_index: 0},
             data_left: WndwLeft{search: "".to_string(),
                                 results: imagelist},
-            data_right: WndwRight{ artist: "".to_string(), 
-                                    link: "".to_string(), 
-                                    tag: "".to_string()},
+            data_right: WndwRight{artist: "".to_string(), 
+                                  link: "".to_string(), 
+                                  tag: "".to_string()},
         }
     }
 }
 
-impl eframe::App for RefViewer{
+impl eframe::App for RefViewer
+{
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
         wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_left);

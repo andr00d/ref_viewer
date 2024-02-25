@@ -67,10 +67,7 @@ impl Exiftool
             {
                 match rx.try_recv() 
                 {
-                    Ok(_) => 
-                    {
-                        break;
-                    }
+                    Ok(_) => {break;}
                     Err(_) => ()
                 }
 
@@ -101,7 +98,7 @@ impl Exiftool
 
     pub fn get_folder_data(&mut self, path: &String) ->  Result<String, String>
     {
-        let mut command = "\n-FileOrder4\nFileName\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-r\n-json\n".to_string();
+        let mut command = "\n-FileOrder8\nFileName\n-fast4\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-r\n-json\n".to_string();
         command.push_str(path);
         command.push_str("\n-execute\n");
 
