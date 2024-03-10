@@ -9,6 +9,7 @@ use crate::exiftool::Exiftool;
 pub struct Folder 
 {
     pub path: String,
+    pub btn_path: String,
     pub collapsed: bool,
     pub images: Vec<Image>,
 }
@@ -89,8 +90,20 @@ impl Data
     // TODO: test non-existant folder
     fn get_folder_data(path: &String, index: usize, exif: &mut Exiftool, taglist: &mut HashMap::<String, Vec<Index>>) ->  Result<Folder, String>
     {
+        let mut btn_path = path.to_string().clone();
+        if btn_path.len() > 20
+        {
+            btn_path = 
+            {
+                // TODO: split cleanly to nearest folder
+                let index = btn_path.char_indices().nth_back(17).unwrap().0;
+                ("...".to_owned() + &btn_path[index..]).to_string()
+            };
+        }
+
         let mut folder = Folder{
             path: path.to_string(), 
+            btn_path: btn_path, 
             collapsed: false,
             images: Vec::new()};
 
@@ -129,9 +142,10 @@ impl Data
         return Ok(folder);
     } 
 
-    pub fn build_vector(&self, tags: Vec<String>, itags: Vec<String>) -> Vec<Index>
+    pub fn build_vector(&self, tags: Vec<String>, itags: Vec<String>) -> Vec<Vec<Index>>
     {
         let mut imglist = Vec::new();
+        for _ in 0..self.folders.len() {imglist.push(Vec::<Index>::new());}
 
         match tags.len()
         {
@@ -141,7 +155,7 @@ impl Data
                 {
                     for i in 0..folder.images.len()
                     {
-                        imglist.push(Index{folder:f, image:i});
+                        imglist[f].push(Index{folder:f, image:i});
                     }
                 } 
             }
@@ -160,18 +174,21 @@ impl Data
 
                 let mut tagcounts = HashMap::new();
                 for item in alltags {*tagcounts.entry(item).or_insert(0) += 1;}
-                for (tag, count) in tagcounts {if count == tags.len() {imglist.push(tag);}}
+                for (tag, count) in tagcounts {if count == tags.len() {imglist[tag.folder].push(tag);}}
 
-                imglist.sort_by(|a, b| {
-                    if a.folder < b.folder {Ordering::Less} 
-                    else if a.folder > b.folder {Ordering::Greater} 
-                    else 
-                    {
-                        if a.image < b.image {Ordering::Less} 
-                        else if a.image > b.image {Ordering::Greater} 
-                        else {Ordering::Equal}                    
-                    }
-                });
+                for folder in &mut imglist
+                {
+                    folder.sort_by(|a, b| {
+                        if a.folder < b.folder {Ordering::Less} 
+                        else if a.folder > b.folder {Ordering::Greater} 
+                        else 
+                        {
+                            if a.image < b.image {Ordering::Less} 
+                            else if a.image > b.image {Ordering::Greater} 
+                            else {Ordering::Equal}                    
+                        }
+                    });
+                }
             }
         }
 
@@ -184,11 +201,14 @@ impl Data
                 {
                     for index in vec
                     {
-                        match imglist.iter().position(|x| x == index)
+                        for folder in &mut imglist
                         {
-                            Some(index) => {imglist.remove(index);},
-                            None => {},
-                        };
+                            match folder.iter().position(|x| x == index)
+                            {
+                                Some(index) => {folder.remove(index);},
+                                None => {},
+                            };
+                        }
                     }
                 },
                 None => (),

@@ -4,11 +4,11 @@ use crate::image::{Status, Index};
 use crate::shared::Shared;
 use crate::data::Data;
 use crate::Textbox;
-
+use egui_extras::{TableBuilder, Column};
 pub struct WndwLeft
 {
     pub search: String,
-    pub results: Vec<Index>,
+    pub results: Vec<Vec<Index>>,
 }
 
 
@@ -35,38 +35,54 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
             for part in &mut itags{part.remove(0);}
 
             data.results = img_data.build_vector(tags, itags);
-            if !data.results.contains(&old_index) && data.results.len() > 0
+            if !data.results[old_index.folder].contains(&old_index) && data.results.len() > 0
             {
-                data_shared.main_img.folder = data.results[0].folder;
-                data_shared.main_img.image = data.results[0].image;
+                data_shared.main_img = data.results[0][0].clone();
             }
         }
 
         if resp_search.gained_focus(){data_shared.active_input = Textbox::Search;}
         if data_shared.active_input == Textbox::Search {resp_search.request_focus();}
+        
+        let icon_size = 100.0;
+        let mut row_heights = Vec::new();
+        for folder in &img_data.folders 
+        {
+            row_heights.push(30.0);
+            if !folder.collapsed {for _i in 0..folder.images.len() {row_heights.push(100.0);}}
+        }
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            // TODO: loop only over subset images to speed up startup for large folders
-            let mut imglist_index = 0;
-            for (i_folder, folder) in img_data.folders.iter_mut().enumerate()
-            {
-                // make folders collabsible
-                if ui.add_sized([100.0, 20.0], Button::new(folder.path.clone())).clicked()
-                {
-                    folder.collapsed = !folder.collapsed;
-                }
-                
-                if folder.collapsed {continue;}
+        // use table instead of display_rows to allow for different row heights
+        TableBuilder::new(ui)
+        .column(Column::remainder().at_least(100.0))
+        .body(|body| {
+            body.heterogeneous_rows(row_heights.into_iter(), |mut row| {
+                let mut i = row.index();
+                let mut f = 0;
 
-                // display folder images
-                for i in imglist_index..data.results.len()
-                {
-                    if data.results[i].folder > i_folder {break;}
-                    if data.results[i].folder < i_folder {imglist_index += 1; continue;}
+                row.col(|ui| {
+                    
+                    for folder in &mut img_data.folders
+                    {   
+                        if i == 0
+                        {
+                            if ui.add_sized([icon_size, 30.0], Button::new(folder.btn_path.clone())).clicked()
+                            {
+                                folder.collapsed = !folder.collapsed;
+                            }
 
-                    let i_image = data.results[imglist_index].image;
-                    let image = &mut folder.images[i_image];
-                    imglist_index += 1;
+                            return;
+                        } 
+
+                        i -= 1;
+                        if !folder.collapsed && i < folder.images.len() {break;}
+                        if !folder.collapsed {i -= folder.images.len();}
+                        f += 1;
+                    }
+
+                    if f >= img_data.folders.len() {return;}
+                    let image = &mut img_data.folders[f].images[i];
+                    let index = Index{folder:f, image:i};
 
                     match image.thumb_state()
                     {
@@ -78,7 +94,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                         Status::Loading =>
                         {
                             image.poll_thumb(ui); 
-                            ui.spinner();
+                            ui.add_sized([icon_size, icon_size], egui::widgets::Spinner::new());
                         }
                         
                         Status::Loaded => 
@@ -86,7 +102,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                             let texture = image.thumb_texture.clone().unwrap();
 
                             let img_response = 
-                            ui.add_sized([100.0, 100.0],
+                            ui.add_sized([icon_size, icon_size],
                                 egui::Image::new(&texture)
                                     .sense(egui::Sense {
                                         click: (true),
@@ -97,8 +113,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
 
                             if img_response.clicked()
                             {
-                                data_shared.main_img.folder = i_folder;
-                                data_shared.main_img.image = i_image;
+                                data_shared.main_img = index;
                                 data_shared.last_update = Instant::now();
                                 data_shared.frame_index = 0;
                             }
@@ -112,9 +127,9 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                             ); 
                         }
                     }
-                }
-            }
-        });     
+                });
+            });
+        });
     });
 
     if old_index != data_shared.main_img
