@@ -4,6 +4,7 @@ use eframe::egui::{Ui, ColorImage, TextureHandle};
 use image::imageops::FilterType;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
+use image::DynamicImage;
 use image::AnimationDecoder;
 
 #[derive(PartialEq)]
@@ -132,20 +133,32 @@ impl Image
                         Err(_x) => return Err(format!("malformed webp file: {}.", path)),
                     };
 
-                    let frames = match decoder.into_frames().collect_frames()
+                    // into_frames doesn't work for webp images, only webp animations.
+                    if !decoder.has_animation()
                     {
-                        Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed webp file: {}.", path)),
-                    };
-
-                    for frame in frames
+                        let frame = DynamicImage::from_decoder(decoder).unwrap().to_rgba8();
+                        let size = [frame.width() as _, frame.height() as _];
+                        let img = egui::ColorImage::from_rgba_unmultiplied(size, &frame);
+                        images.push(FrameData{image: img, delay: 0});
+                    }
+                    else
                     {
-                        let size = [frame.buffer().width() as _, frame.buffer().height() as _];
-                        let img = egui::ColorImage::from_rgba_unmultiplied(size, frame.buffer());
-                        let (numerator, denominator) = frame.delay().numer_denom_ms();
-                        let delay = numerator / denominator; 
-                        images.push(FrameData{image: img, delay: delay});
-                    };
+                        let frames = match decoder.into_frames().collect_frames()
+                        {
+                            Ok(x) => x,
+                            Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                        };
+                            
+                        for frame in frames
+                        {
+                            let size = [frame.buffer().width() as _, frame.buffer().height() as _];
+                            let img = egui::ColorImage::from_rgba_unmultiplied(size, frame.buffer());
+                            let (numerator, denominator) = frame.delay().numer_denom_ms();
+                            let delay = numerator / denominator; 
+                            images.push(FrameData{image: img, delay: delay});
+                        };
+                    }
+                    
                 },
                 "gif" => 
                 {
