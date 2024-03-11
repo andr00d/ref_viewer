@@ -6,6 +6,7 @@ mod exiftool;
 mod data;
 mod image;
 
+use ::image::load_from_memory;
 use std::path::Path;
 use std::time::Instant;
 use eframe::egui;
@@ -17,10 +18,20 @@ use crate::shared::{Shared, Textbox};
 
 fn main() -> Result<(), eframe::Error> 
 {
+    let icon = include_bytes!("../media/icon.png");
+    let img = load_from_memory(icon).expect("icon not found.").to_rgba8();
+    let (w, h) = img.dimensions();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
                 .with_inner_size([1000.0, 600.0])
-                .with_min_inner_size([300.0, 150.0]),
+                .with_min_inner_size([300.0, 150.0])
+                .with_icon(egui::IconData 
+                    { 
+                        rgba: img.into_raw(), 
+                        width: w, 
+                        height: h,
+                    }),
             ..Default::default()
     };
 

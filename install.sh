@@ -34,6 +34,9 @@ then
     exit 1
 fi
 
+mkdir -p $HOME/.local/share/icons/ref_viewer
+cp media/icon.png $HOME/.local/share/icons/ref_viewer/ref_viewer.png
+
 app_dir=$HOME/.local/share/applications
 
 if [ ! -f $app_dir/ref_viewer.desktop ]; 
@@ -46,6 +49,7 @@ echo "
 Type=Application
 Name=ref viewer
 Exec=$HOME/.local/bin/ref_viewer
+Icon=$HOME/.local/share/icons/ref_viewer/ref_viewer.png
 MimeType=inode/directory;image/gif;image/jpg;image/jpeg;image/png;image/webp
 Categories=Graphics;
 " > $app_dir/ref_viewer.desktop 
