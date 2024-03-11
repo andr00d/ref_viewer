@@ -98,7 +98,7 @@ impl Exiftool
 
     pub fn get_folder_data(&mut self, path: &String) ->  Result<String, String>
     {
-        let mut command = "\n-FileOrder8\nFileName\n-fast4\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-r\n-json\n".to_string();
+        let mut command = "\n-FileOrder8\nFileName\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-r\n-json\n".to_string();
         command.push_str(path);
         command.push_str("\n-execute\n");
 
@@ -109,7 +109,7 @@ impl Exiftool
 
     pub fn set_usercomment(&mut self, path: &String, tag: &String) ->  Result<String, String>
     {
-        let mut command = "-overwrite_original\n-usercomment=".to_string();
+        let mut command = "-overwrite_original\n-m\n-usercomment=".to_string();
         command.push_str(tag);
         command.push_str("\n");
         command.push_str(path);
@@ -122,7 +122,7 @@ impl Exiftool
 
     pub fn set_link(&mut self, path: &String, tag: &String) ->  Result<String, String>
     {
-        let mut command = "-overwrite_original\n-PageName=".to_string();
+        let mut command = "-overwrite_original\n-m\n-PageName=".to_string();
         command.push_str(tag);
         command.push_str("\n");
         command.push_str(path);
@@ -135,7 +135,7 @@ impl Exiftool
 
     pub fn set_artist(&mut self, path: &String, tag: &String) ->  Result<String, String>
     {
-        let mut command = "-overwrite_original\n-Artist=".to_string();
+        let mut command = "-overwrite_original\n-m\n-Artist=".to_string();
         command.push_str(tag);
         command.push_str("\n");
         command.push_str(path);

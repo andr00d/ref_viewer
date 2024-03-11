@@ -97,8 +97,11 @@ impl eframe::App for RefViewer
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
         wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_left);
+
+        let mut total_results = 0;
+        for folder in &self.data_left.results {total_results += folder.len();}
     
-        if self.img_data.get_nr_imgs() == 0 || self.data_left.results.len() == 0
+        if self.img_data.get_nr_imgs() == 0 || total_results == 0
         {
             wndw_main::wndw_main_empty(ui);
         }

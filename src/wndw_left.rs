@@ -37,7 +37,8 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
             data.results = img_data.build_vector(tags, itags);
             if !data.results[old_index.folder].contains(&old_index) && data.results.len() > 0
             {
-                data_shared.main_img = data.results[0][0].clone();
+                data_shared.main_img  = Index{folder: 0, image: 0};
+                for folder in &data.results { if folder.len() > 0 {data_shared.main_img = folder[0].clone();} }
             }
         }
 
@@ -46,10 +47,10 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
         
         let icon_size = 100.0;
         let mut row_heights = Vec::new();
-        for folder in &img_data.folders 
+        for (f, folder) in img_data.folders.iter().enumerate()
         {
             row_heights.push(30.0);
-            if !folder.collapsed {for _i in 0..folder.images.len() {row_heights.push(100.0);}}
+            if !folder.collapsed {for _i in 0..data.results[f].len() {row_heights.push(100.0);}}
         }
 
         // use table instead of display_rows to allow for different row heights
@@ -81,8 +82,8 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                     }
 
                     if f >= img_data.folders.len() {return;}
-                    let image = &mut img_data.folders[f].images[i];
-                    let index = Index{folder:f, image:i};
+                    let index = &data.results[f][i];
+                    let image = &mut img_data.folders[index.folder].images[index.image];
 
                     match image.thumb_state()
                     {
@@ -113,7 +114,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
 
                             if img_response.clicked()
                             {
-                                data_shared.main_img = index;
+                                data_shared.main_img = index.clone();
                                 data_shared.last_update = Instant::now();
                                 data_shared.frame_index = 0;
                             }
