@@ -251,9 +251,10 @@ impl Image
         let thread_result = match self.thumb_thread.take().unwrap().join()
         {
             Ok(x) => x,
-            Err(_x) => 
+            Err(x) => 
             {
                 println!("Thread error when loading thumb for {}", self.file);
+                println!("details: {}", x);
                 self.thumb_state = Status::Error;
                 return;
             }
@@ -262,9 +263,10 @@ impl Image
         let result = match thread_result
         {
             Ok(x) => x,
-            Err(_x) => 
+            Err(x) => 
             {
                 println!("image loading/scaling error for {}", self.file);
+                println!("details: {}", x);
                 self.thumb_state = Status::Error;
                 return
             }

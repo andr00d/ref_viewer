@@ -99,6 +99,7 @@ impl Exiftool
     pub fn get_folder_data(&mut self, path: &String) ->  Result<String, String>
     {
         let mut command = "\n-FileOrder8\nFileName\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-r\n-json\n".to_string();
+        command.push_str("-ext\njpg\n-ext\npng\n-ext\nwebp\n-ext\ngif\n");
         command.push_str(path);
         command.push_str("\n-execute\n");
 
