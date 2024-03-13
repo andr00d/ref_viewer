@@ -254,7 +254,7 @@ impl Image
             Err(x) => 
             {
                 println!("Thread error when loading thumb for {}", self.file);
-                println!("details: {}", x);
+                println!("details: {:?}", x);
                 self.thumb_state = Status::Error;
                 return;
             }
@@ -266,7 +266,7 @@ impl Image
             Err(x) => 
             {
                 println!("image loading/scaling error for {}", self.file);
-                println!("details: {}", x);
+                println!("details: {:?}", x);
                 self.thumb_state = Status::Error;
                 return
             }
