@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod wndw_left;
 mod wndw_right;
 mod wndw_main;

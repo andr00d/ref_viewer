@@ -27,7 +27,13 @@ impl Exiftool
 {
     pub fn new() -> Exiftool
     {
-        let mut exif = match Command::new("exiftool")
+        #[cfg(windows)]
+        let command = "exiftool.exe";
+
+        #[cfg(unix)]
+        let command = "exiftool";
+
+        let mut exif = match Command::new(command)
                             .args(["-stay_open", "true", "-@", "-"])
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
@@ -35,8 +41,8 @@ impl Exiftool
         {
             Err(x) => panic!("error starting exiftool: {}", x),
             Ok(x) => x,
-        };   
-        
+        };  
+
         let (thd_tx, thd_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = mpsc::channel();
         let stdin = exif.stdin.take().unwrap();
