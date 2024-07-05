@@ -25,7 +25,7 @@ impl Drop for Exiftool {
 
 impl Exiftool 
 {
-    pub fn new() -> Exiftool
+    pub fn new() -> Option<Exiftool>
     {
         #[cfg(windows)]
         let command = "exiftool.exe";
@@ -33,15 +33,14 @@ impl Exiftool
         #[cfg(unix)]
         let command = "exiftool";
 
-        let mut exif = match Command::new(command)
+        let exif_command = Command::new(command)
                             .args(["-stay_open", "true", "-@", "-"])
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
-                            .spawn()
-        {
-            Err(x) => panic!("error starting exiftool: {}", x),
-            Ok(x) => x,
-        };  
+                            .spawn();
+
+        if exif_command.is_err() {return None;}
+        let mut exif = exif_command.unwrap();
 
         let (thd_tx, thd_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = mpsc::channel();
@@ -50,13 +49,13 @@ impl Exiftool
         
         let thread = Self::thr_stdin(stdout, thd_tx, stop_rx);
 
-        Exiftool{
+        Some(Exiftool{
             exif: exif,
             thread: thread,
             stdin: stdin,
             thd_rx: thd_rx,
             stop_tx: stop_tx,
-        }
+        })
     }
 
     

@@ -16,7 +16,7 @@ pub struct Folder
 
 pub struct Data 
 {
-    exif: Exiftool, 
+    exif: Option<Exiftool>, 
     pub folders: Vec<Folder>,
     pub taglist: HashMap::<String, Vec<Index>>,
 }
@@ -28,9 +28,15 @@ impl Data
         let mut exif = Exiftool::new();
         let mut data = Vec::<Folder>::new();
         let mut taglist = HashMap::<String, Vec<Index>>::new();
+        
+        if exif.is_none()
+        {
+            return Data {folders:data, exif:exif, taglist:taglist};
+        }
+        
         for (i, path) in paths.iter().enumerate()
         {
-            let result = Self::get_folder_data(&path, i, &mut exif, &mut taglist);
+            let result = Self::get_folder_data(&path, i, &mut exif.as_mut().unwrap(), &mut taglist);
             match result
             {
                 Ok(x) => data.push(x),
@@ -38,12 +44,17 @@ impl Data
             };
         }
 
-        Data { folders:data, exif:exif, taglist:taglist}
+        return Data {folders:data, exif:exif, taglist:taglist};
     }
 
     ///////////////////
     // data building //
     ///////////////////
+
+    pub fn exif_available(&self) -> bool
+    {
+        return self.exif.is_some();
+    }
 
     fn read_json(input: &String) -> Vec<String>
     {
@@ -326,7 +337,7 @@ impl Data
         Self::rem_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.set_usercomment(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_usercomment(&img.file, &output);
     }
 
     pub fn add_tag(&mut self, img_index: &Index, tag: &String)
@@ -337,7 +348,7 @@ impl Data
         Self::add_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.set_usercomment(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_usercomment(&img.file, &output);
     }
 
     pub fn del_link(&mut self, img_index: &Index, link: &String) -> ()
@@ -345,7 +356,7 @@ impl Data
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         img.remove_link(link);
         let output = Self::build_string(&img.links);
-        let _ = self.exif.set_link(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_link(&img.file, &output);
     }
 
     pub fn add_link(&mut self, img_index: &Index, link: &String)
@@ -353,7 +364,7 @@ impl Data
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         img.add_link(link);
         let output = Self::build_string(&img.links);
-        let _ = self.exif.set_link(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_link(&img.file, &output);
     }
 
     pub fn del_artist(&mut self, img_index: &Index, artist: &String) -> ()
@@ -364,7 +375,7 @@ impl Data
         Self::rem_taglist(&mut self.taglist, img_index, artist);
 
         let output = Self::build_string(&img.artists);
-        let _ = self.exif.set_artist(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_artist(&img.file, &output);
     }
 
     pub fn add_artist(&mut self, img_index: &Index, artist: &String)
@@ -375,6 +386,6 @@ impl Data
         Self::add_taglist(&mut self.taglist, img_index, artist);
         
         let output = Self::build_string(&img.artists);
-        let _ = self.exif.set_artist(&img.file, &output);
+        let _ = self.exif.as_mut().unwrap().set_artist(&img.file, &output);
     }
 }
