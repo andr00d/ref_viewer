@@ -7,6 +7,8 @@ use image::codecs::webp::WebPDecoder;
 use image::DynamicImage;
 use image::AnimationDecoder;
 
+/////////////////////////
+
 #[derive(PartialEq)]
 pub enum Status 
 {
@@ -56,6 +58,7 @@ pub struct Image
     full_state: Status,
 }
 
+/////////////////////////
 
 impl Image 
 {

@@ -1,9 +1,10 @@
 use std::time::{Instant, Duration};
 use eframe::egui;
 use eframe::egui::Vec2;
-use crate::data::Data;
-use crate::image::{Image, Status};
+
+use crate::data::image::{Image, Status};
 use crate::shared::Shared;
+use crate::data::Data;
 
 
 fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2

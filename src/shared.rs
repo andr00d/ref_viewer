@@ -1,7 +1,8 @@
 use std::time::Instant;
-use crate::image::Index;
 
-// data shared between two/three windows
+use crate::data::image::Index;
+
+// data shared between multiple windows
 
 #[derive(PartialEq)]
 #[derive(Clone)]

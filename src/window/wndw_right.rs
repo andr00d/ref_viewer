@@ -1,8 +1,10 @@
 use eframe::egui;
 use egui::widget_text::RichText;
+
 use crate::data::Data;
-use crate::shared::Shared;
-use crate::Textbox;
+use crate::shared::{Shared, Textbox};
+
+/////////////////////////
 
 pub struct WndwRight
 {
@@ -20,6 +22,8 @@ pub enum Action
     ArtistAdd(String),
     ArtistDel(String),
 }
+
+/////////////////////////
 
 fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, active: &mut Textbox, boxtype: Textbox) -> Option<Action>
 {

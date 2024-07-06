@@ -4,6 +4,8 @@ use std::io::BufReader;
 use std::sync::mpsc;
 use std::thread;
 
+/////////////////////////
+
 pub struct Exiftool
 {
     exif: std::process::Child,
@@ -12,6 +14,8 @@ pub struct Exiftool
     thd_rx: std::sync::mpsc::Receiver<String>,
     stop_tx: std::sync::mpsc::Sender<String>, 
 }
+
+/////////////////////////
 
 impl Drop for Exiftool {
     fn drop(&mut self) 

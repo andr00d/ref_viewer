@@ -1,16 +1,20 @@
 use std::time::Instant;
 use eframe::egui::{self, Button};
-use crate::image::{Status, Index};
-use crate::shared::Shared;
-use crate::data::Data;
-use crate::Textbox;
 use egui_extras::{TableBuilder, Column};
+
+use crate::data::image::{Status, Index};
+use crate::shared::{Shared, Textbox};
+use crate::data::Data;
+
+/////////////////////////
+
 pub struct WndwLeft
 {
     pub search: String,
     pub results: Vec<Vec<Index>>,
 }
 
+/////////////////////////
 
 pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared, data: &mut WndwLeft) -> ()
 {
