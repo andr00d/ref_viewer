@@ -62,7 +62,7 @@ pub fn wndw_main_empty(ui: &egui::Context) -> ()
         let window_area = egui::Rect{min:ui.next_widget_position(), 
             max:ui.next_widget_position() + ui.available_size()};
 
-        ui.put(window_area, egui::Label::new("no images found".to_string())); 
+        ui.put(window_area, egui::Label::new("no images opened".to_string())); 
     });
 }
 

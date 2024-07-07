@@ -9,6 +9,7 @@ edition = "2021"
 serde_json = "1.0"
 egui =  "0.28"
 eframe =  "0.28"
+rfd = "0.14"
 egui_extras =  {version = "0.28", features = ["image"] }
 image = { version = "0.25", default-features = false, features = [
   "jpeg",

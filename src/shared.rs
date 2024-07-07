@@ -20,4 +20,6 @@ pub struct Shared
     pub active_input: Textbox,
     pub last_update: Instant,
     pub frame_index: usize,
+    pub search: String,
+    pub results: Vec<Vec<Index>>,
 }

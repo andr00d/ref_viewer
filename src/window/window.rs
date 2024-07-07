@@ -5,7 +5,8 @@ use crate::shared::{Shared, Textbox};
 use crate::data::Data;
 use crate::data::image::Index;
 use crate::window::{WndwRight, wndw_right};
-use crate::window::{WndwLeft, wndw_left};
+use crate::window::wndw_left;
+use crate::window::wndw_toolbar;
 use crate::window::wndw_main;
 
 
@@ -26,8 +27,8 @@ impl RefViewer
             data_shared: Shared{main_img: index,
                                 active_input: Textbox::Search,
                                 last_update: Instant::now(),
-                                frame_index: 0},
-            data_left: WndwLeft{search: "".to_string(),
+                                frame_index: 0,
+                                search: "".to_string(),
                                 results: imagelist},
             data_right: WndwRight{artist: "".to_string(), 
                                   link: "".to_string(), 
@@ -40,10 +41,11 @@ impl eframe::App for RefViewer
 {
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
-        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_left);
+        wndw_toolbar::wndw_toolbar(ui, &mut self.img_data, &mut self.data_shared);
+        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
 
         let mut total_results = 0;
-        for folder in &self.data_left.results {total_results += folder.len();}
+        for folder in &self.data_shared.results {total_results += folder.len();}
     
         if self.img_data.get_nr_imgs() == 0 || total_results == 0
         {

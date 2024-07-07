@@ -38,6 +38,36 @@ impl Data
     // data building //
     ///////////////////
 
+    pub fn open_paths(&mut self, mut paths: Vec::<String>) -> Index
+    {
+        self.folders.clear();
+        self.taglist.clear();
+
+        // TODO: return index of chosen image
+        let index = Index{folder:0, image:0};
+
+        for item in &mut paths 
+        {
+            let path = Path::new(&item);
+            if path.is_file() 
+            {
+                *item = path.parent().unwrap().to_string_lossy().into_owned();
+            };
+        }
+
+        for (i, path) in paths.iter().enumerate()
+        {
+            let result = Self::get_folder_data(&path, i, self.exif.as_mut().unwrap(), &mut self.taglist);
+            match result
+            {
+                Ok(x) => self.folders.push(x),
+                Err(x) => println!("{}", x),
+            };
+        }
+
+        return index;
+    }
+
     pub fn exif_available(&self) -> bool
     {
         return self.exif.is_some();

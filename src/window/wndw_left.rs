@@ -8,15 +8,7 @@ use crate::data::Data;
 
 /////////////////////////
 
-pub struct WndwLeft
-{
-    pub search: String,
-    pub results: Vec<Vec<Index>>,
-}
-
-/////////////////////////
-
-pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared, data: &mut WndwLeft) -> ()
+pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared) -> ()
 {
     let old_index = Index{folder: data_shared.main_img.folder, image: data_shared.main_img.image};
 
@@ -25,24 +17,24 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
     .resizable(false)
     .show(ui, |ui| {
         
-        let resp_search = ui.add(egui::TextEdit::singleline(&mut data.search).hint_text("search tags"));
+        let resp_search = ui.add(egui::TextEdit::singleline(&mut data_shared.search).hint_text("search tags"));
         ui.add(egui::Separator::default());
 
 
         if resp_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
         {
-            let mut tags: Vec<String> = data.search.split_whitespace().map(str::to_string).collect();
+            let mut tags: Vec<String> = data_shared.search.split_whitespace().map(str::to_string).collect();
             let mut itags = tags.clone();
 
             tags.retain(|x| !x.starts_with("-"));
             itags.retain(|x| x.starts_with("-"));
             for part in &mut itags{part.remove(0);}
 
-            data.results = img_data.build_vector(tags, itags);
-            if !data.results[old_index.folder].contains(&old_index) && data.results.len() > 0
+            data_shared.results = img_data.build_vector(tags, itags);
+            if !data_shared.results[old_index.folder].contains(&old_index) && data_shared.results.len() > 0
             {
                 data_shared.main_img  = Index{folder: 0, image: 0};
-                for folder in &data.results { if folder.len() > 0 {data_shared.main_img = folder[0].clone();} }
+                for folder in &data_shared.results { if folder.len() > 0 {data_shared.main_img = folder[0].clone();} }
             }
         }
 
@@ -54,7 +46,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
         for (f, folder) in img_data.folders.iter().enumerate()
         {
             row_heights.push(30.0);
-            if !folder.collapsed {for _i in 0..data.results[f].len() {row_heights.push(100.0);}}
+            if !folder.collapsed {for _i in 0..data_shared.results[f].len() {row_heights.push(100.0);}}
         }
 
         // use table instead of display_rows to allow for different row heights
@@ -86,7 +78,7 @@ pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                     }
 
                     if f >= img_data.folders.len() {return;}
-                    let index = &data.results[f][i];
+                    let index = &data_shared.results[f][i];
                     let image = &mut img_data.folders[index.folder].images[index.image];
 
                     match image.thumb_state()
