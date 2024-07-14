@@ -20,7 +20,7 @@ pub struct Folder
 
 pub struct Data 
 {
-    exif: Option<Exiftool>, 
+    exif: Exiftool, 
     pub folders: Vec<Folder>,
     pub taglist: HashMap::<String, Vec<Index>>,
 }

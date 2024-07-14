@@ -5,7 +5,6 @@ mod data;
 
 use ::image::load_from_memory;
 use ::image::RgbaImage;
-use std::path::Path;
 use eframe::egui;
 
 use crate::data::Data;
@@ -13,24 +12,11 @@ use crate::window::{window::run_error_window, window::run_window};
 
 /////////////////////////
 
-fn create_database() -> (Data, Option<String>)
+fn get_paths() -> Vec<String>
 {
-    let mut folders: Vec<String> = std::env::args().collect();
-    folders.remove(0);
-    let mut img_path = None;
-
-    for item in &mut folders 
-    {
-        let path = Path::new(&item);
-        if path.is_file() 
-        {
-            img_path = Some(item.clone());
-            *item = path.parent().unwrap().to_string_lossy().into_owned();
-        };
-    }
-
-    let img_data = Data::new(folders);
-    return (img_data, img_path);
+    let mut paths: Vec<String> = std::env::args().collect();
+    paths.remove(0); // remove program from folder list
+    return paths;
 }
 
 fn eframe_options(img: RgbaImage, w: u32, h: u32) -> eframe::NativeOptions
@@ -65,8 +51,16 @@ fn main() -> Result<(), eframe::Error>
 {
     let (img, w, h) = load_icon();
     let options = eframe_options(img, w, h);
-    let (img_data, img_path) = create_database();
+    let input_paths = get_paths();
 
-    if !img_data.exif_available() {run_error_window(options)}
-    else {run_window(img_data, img_path, options)}
+    match Data::new()
+    {
+        Ok(mut x) => 
+        {
+            let index = x.open_paths(input_paths);
+            return run_window(x, index, options)
+        },
+
+        Err(_) => return run_error_window(options),
+    };
 }

@@ -12,15 +12,9 @@ use crate::window::wndw_main;
 
 impl RefViewer
 {
-    fn new(img_data: Data, img_path: Option<String>) -> Self 
+    fn new(img_data: Data, index: Index) -> Self 
     {
         let imagelist = img_data.build_vector(Vec::new(), Vec::new());
-        let mut index = Index{folder: 0, image: 0};
-
-        if img_path.is_some() 
-        {
-            index = img_data.get_string_index(img_path.unwrap()).unwrap_or(index);
-        }
 
         Self { 
             img_data: img_data,
@@ -59,14 +53,14 @@ impl eframe::App for RefViewer
     }
 }
 
-pub fn run_window(img_data: Data, img_path: Option<String>, options: eframe::NativeOptions) -> Result<(), eframe::Error> 
+pub fn run_window(img_data: Data, index: Index, options: eframe::NativeOptions) -> Result<(), eframe::Error> 
 {
     eframe::run_native(
         "ref viewer",
         options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Ok(Box::new(RefViewer::new(img_data, img_path)))
+            Ok(Box::new(RefViewer::new(img_data, index)))
         }),
     )
 }

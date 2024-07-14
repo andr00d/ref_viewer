@@ -10,28 +10,17 @@ use crate::data::image::Index;
 
 impl Data 
 {
-    pub fn new(paths: Vec<String>) -> Data 
+    pub fn new() -> Result<Data, String> 
     {
-        let mut exif = Exiftool::new();
-        let mut data = Vec::<Folder>::new();
-        let mut taglist = HashMap::<String, Vec<Index>>::new();
-        
-        if exif.is_none()
-        {
-            return Data {folders:data, exif:exif, taglist:taglist};
-        }
-        
-        for (i, path) in paths.iter().enumerate()
-        {
-            let result = Self::get_folder_data(&path, i, &mut exif.as_mut().unwrap(), &mut taglist);
-            match result
-            {
-                Ok(x) => data.push(x),
-                Err(x) => println!("{}", x),
-            };
-        }
+        let exif = Exiftool::new();
+        let data = Vec::<Folder>::new();
+        let taglist = HashMap::<String, Vec<Index>>::new();
 
-        return Data {folders:data, exif:exif, taglist:taglist};
+        match exif
+        {
+            Some(x) => return Ok(Data {folders:data, exif:x, taglist:taglist}),
+            None => return Err("exif not found on system".to_owned()),
+        }
     }
 
     ///////////////////
@@ -44,33 +33,33 @@ impl Data
         self.taglist.clear();
 
         // TODO: return index of chosen image
-        let index = Index{folder:0, image:0};
+        let mut index = Index{folder:0, image:0};
 
-        for item in &mut paths 
+        for (i, input_path) in paths.iter().enumerate()
         {
-            let path = Path::new(&item);
-            if path.is_file() 
-            {
-                *item = path.parent().unwrap().to_string_lossy().into_owned();
-            };
-        }
+            let mut path = Path::new(&input_path);
+            let is_file = path.is_file();
+            if is_file {path = path.parent().unwrap();}
 
-        for (i, path) in paths.iter().enumerate()
-        {
-            let result = Self::get_folder_data(&path, i, self.exif.as_mut().unwrap(), &mut self.taglist);
-            match result
+            if path.to_str().is_none()
             {
-                Ok(x) => self.folders.push(x),
+                let err_path = path.to_string_lossy().into_owned();
+                println!("Error decoding the following path:");
+                println!("{}", err_path);
+                continue;
+            }
+
+            let str_path = path.to_str().unwrap().to_owned();
+            match self.set_folder_data(&str_path, i)
+            {
                 Err(x) => println!("{}", x),
+                Ok(_) => (),
             };
+
+            if is_file {index = self.get_string_index(input_path).unwrap_or(index);}
         }
 
         return index;
-    }
-
-    pub fn exif_available(&self) -> bool
-    {
-        return self.exif.is_some();
     }
 
     fn read_json(input: &String) -> Vec<String>
@@ -116,7 +105,7 @@ impl Data
     }
 
     // TODO: test non-existant folder
-    fn get_folder_data(path: &String, index: usize, exif: &mut Exiftool, taglist: &mut HashMap::<String, Vec<Index>>) ->  Result<Folder, String>
+    fn set_folder_data(&mut self, path: &String, index: usize) ->  Result<(), String>
     {
         let mut btn_path = path.to_string().clone();
         if btn_path.len() > 20
@@ -135,13 +124,17 @@ impl Data
             collapsed: false,
             images: Vec::new()};
 
-        let output = match exif.get_folder_data(path)
+        let output = match self.exif.get_folder_data(path)
         {
             Ok(x) => x,
             Err(_x) => return Err("Error with exiftool".to_string()),
         };
 
-        if output.len() == 0 {return Ok(folder)}
+        if output.len() == 0 
+        {
+            self.folders.push(folder);
+            return Ok(());
+        }
 
         let json = match serde_json::from_str::<Value>(&output)
         {
@@ -158,8 +151,8 @@ impl Data
                 Ok(x) => 
                 {
                     let index = Index{folder:index, image:img_index};
-                    Self::update_tags(&x.artists, &index, taglist);
-                    Self::update_tags(&x.tags, &index, taglist);
+                    self.update_tags(&x.artists, &index);
+                    self.update_tags(&x.tags, &index);
                     folder.images.push(x);
                     img_index += 1
                 }
@@ -167,7 +160,8 @@ impl Data
             };
         }
 
-        return Ok(folder);
+        self.folders.push(folder);
+        return Ok(());
     } 
 
     pub fn build_vector(&self, tags: Vec<String>, itags: Vec<String>) -> Vec<Vec<Index>>
@@ -246,16 +240,16 @@ impl Data
         return imglist;
     }
 
-    pub fn get_string_index(&self, path: String) -> Option<Index>
+    pub fn get_string_index(&self, path: &String) -> Option<Index>
     {
-        let img_folder = Path::new(&path).parent().unwrap().to_string_lossy().into_owned();
+        let img_folder = Path::new(path).parent().unwrap().to_string_lossy().into_owned();
         for (f, folder) in self.folders.iter().enumerate()
         {
             if folder.path != img_folder {continue;}
 
             for (i, image) in folder.images.iter().enumerate()
             {
-                if image.file == path {return Some(Index{folder:f, image:i});}
+                if image.file == *path {return Some(Index{folder:f, image:i});}
             }
         }
         return None;
@@ -265,11 +259,11 @@ impl Data
     // taglist //
     /////////////
 
-    fn update_tags(tags: &Vec<String>, index: &Index, taglist: &mut HashMap::<String, Vec<Index>>)
+    fn update_tags(&mut self, tags: &Vec<String>, index: &Index)
     {
         for tag in tags
         {
-            taglist.entry(tag.clone()).or_default().push(index.clone());
+            self.taglist.entry(tag.clone()).or_default().push(index.clone());
         }
     }
 
@@ -354,7 +348,7 @@ impl Data
         Self::rem_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.as_mut().unwrap().set_usercomment(&img.file, &output);
+        let _ = self.exif.set_usercomment(&img.file, &output);
     }
 
     pub fn add_tag(&mut self, img_index: &Index, tag: &String)
@@ -365,7 +359,7 @@ impl Data
         Self::add_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.as_mut().unwrap().set_usercomment(&img.file, &output);
+        let _ = self.exif.set_usercomment(&img.file, &output);
     }
 
     pub fn del_link(&mut self, img_index: &Index, link: &String) -> ()
@@ -373,7 +367,7 @@ impl Data
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         img.remove_link(link);
         let output = Self::build_string(&img.links);
-        let _ = self.exif.as_mut().unwrap().set_link(&img.file, &output);
+        let _ = self.exif.set_link(&img.file, &output);
     }
 
     pub fn add_link(&mut self, img_index: &Index, link: &String)
@@ -381,7 +375,7 @@ impl Data
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         img.add_link(link);
         let output = Self::build_string(&img.links);
-        let _ = self.exif.as_mut().unwrap().set_link(&img.file, &output);
+        let _ = self.exif.set_link(&img.file, &output);
     }
 
     pub fn del_artist(&mut self, img_index: &Index, artist: &String) -> ()
@@ -392,7 +386,7 @@ impl Data
         Self::rem_taglist(&mut self.taglist, img_index, artist);
 
         let output = Self::build_string(&img.artists);
-        let _ = self.exif.as_mut().unwrap().set_artist(&img.file, &output);
+        let _ = self.exif.set_artist(&img.file, &output);
     }
 
     pub fn add_artist(&mut self, img_index: &Index, artist: &String)
@@ -403,6 +397,6 @@ impl Data
         Self::add_taglist(&mut self.taglist, img_index, artist);
         
         let output = Self::build_string(&img.artists);
-        let _ = self.exif.as_mut().unwrap().set_artist(&img.file, &output);
+        let _ = self.exif.set_artist(&img.file, &output);
     }
 }
