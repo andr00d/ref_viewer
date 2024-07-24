@@ -2,7 +2,8 @@ use eframe::egui;
 use egui::menu;
 
 use crate::data::Data;
-use crate::shared::Shared;
+use crate::shared::{Shared, Gallery};
+use crate::data::image::Index;
 
 fn open_paths() -> std::vec::Vec<String>
 {
@@ -40,11 +41,24 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
                 if ui.button("Open file").clicked() 
                 {
                     let paths = open_paths();
+                    if paths.len() == 0 {return;}
 
                     // TODO: add popup about invalid paths. 
-                    data_shared.main_img = img_data.open_paths(paths);
-                    data_shared.search = "".to_string();
+                    match img_data.open_paths(paths)
+                    {
+                        Some(x) =>
+                        {
+                            data_shared.main_img = x;
+                            data_shared.gallery_type = Gallery::LeftBar;
+                        }
+                        None =>
+                        {
+                            data_shared.main_img = Index{folder:0, image: 0};
+                            data_shared.gallery_type = Gallery::Full;
+                        }
+                    }
                     
+                    data_shared.search = "".to_string();
                     let imagelist = img_data.build_vector(Vec::new(), Vec::new());
                     data_shared.results = imagelist;
                 }

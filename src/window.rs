@@ -2,6 +2,7 @@ mod wndw_left;
 mod wndw_right;
 mod wndw_toolbar;
 mod wndw_main;
+mod wndw_gallery;
 pub mod window;
 
 use wndw_right::WndwRight;

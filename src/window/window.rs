@@ -1,13 +1,14 @@
 use std::time::Instant;
 
 use crate::window::{RefViewer, ErrorWindow};
-use crate::shared::{Shared, Textbox};
+use crate::shared::{Shared, Textbox, Gallery};
 use crate::data::Data;
 use crate::data::image::Index;
 use crate::window::{WndwRight, wndw_right};
 use crate::window::wndw_left;
 use crate::window::wndw_toolbar;
 use crate::window::wndw_main;
+use crate::window::wndw_gallery;
 
 
 impl RefViewer
@@ -20,6 +21,7 @@ impl RefViewer
             img_data: img_data,
             data_shared: Shared{main_img: index,
                                 active_input: Textbox::Search,
+                                gallery_type: Gallery::LeftBar,
                                 last_update: Instant::now(),
                                 frame_index: 0,
                                 search: "".to_string(),
@@ -36,19 +38,28 @@ impl eframe::App for RefViewer
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
         wndw_toolbar::wndw_toolbar(ui, &mut self.img_data, &mut self.data_shared);
-        wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
-
-        let mut total_results = 0;
-        for folder in &self.data_shared.results {total_results += folder.len();}
-    
-        if self.img_data.get_nr_imgs() == 0 || total_results == 0
+        
+        if self.data_shared.gallery_type == Gallery::Full
         {
-            wndw_main::wndw_main_empty(ui);
+            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
+            wndw_gallery::wndw_gallery(ui, &mut self.img_data, &mut self.data_shared);
         }
         else
         {
-            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
-            wndw_main::wndw_main(ui, &mut self.img_data, &mut self.data_shared);
+            wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
+    
+            let mut total_results = 0;
+            for folder in &self.data_shared.results {total_results += folder.len();}
+        
+            if total_results == 0
+            {
+                wndw_main::wndw_main_empty(ui);
+            }
+            else
+            {
+                wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
+                wndw_main::wndw_main(ui, &mut self.img_data, &mut self.data_shared);
+            }
         }
     }
 }

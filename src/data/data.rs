@@ -27,13 +27,13 @@ impl Data
     // data building //
     ///////////////////
 
-    pub fn open_paths(&mut self, mut paths: Vec::<String>) -> Index
+    // TODO: seperate recursive folders out into seperate ones.
+    pub fn open_paths(&mut self, paths: Vec::<String>) -> Option<Index>
     {
         self.folders.clear();
         self.taglist.clear();
 
-        // TODO: return index of chosen image
-        let mut index = Index{folder:0, image:0};
+        let mut index = None;
 
         for (i, input_path) in paths.iter().enumerate()
         {
@@ -56,7 +56,11 @@ impl Data
                 Ok(_) => (),
             };
 
-            if is_file {index = self.get_string_index(input_path).unwrap_or(index);}
+            if is_file 
+            {
+                index = Some(self.get_string_index(input_path)
+                        .unwrap_or(Index{folder:0, image:0}));
+            }
         }
 
         return index;
@@ -313,18 +317,6 @@ impl Data
     ///////////////////
     // changing tags //
     ///////////////////
-
-    pub fn get_nr_imgs(&self) -> usize
-    {
-        let mut count = 0;
-
-        for folder in &self.folders
-        {
-            count += folder.images.len();
-        }
-
-        return count;
-    }
 
     fn build_string(vector: &Vec<String>) -> String
     {
