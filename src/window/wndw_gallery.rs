@@ -41,7 +41,8 @@ fn search_bar(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared) 
 fn calc_table_dims (width: f32, icon_size: f32, img_data: &Data, data_shared: &Shared) -> (usize, Vec<f32>)
 {
     let mut row_heights = Vec::new();
-    let columns = (width / icon_size).floor() as usize; //TODO: remove as keyword. use the better option
+    let mut columns = (width / icon_size).floor() as usize; //TODO: remove as keyword. use the better option
+    if columns < 1 {columns = 1;}
 
     for (f, folder) in img_data.folders.iter().enumerate()
     {
@@ -108,96 +109,116 @@ fn get_indexes (row: usize, columns: usize, img_data: &Data) -> (bool, Vec<Index
 
 /////////////////////////
 
+fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared) -> ()
+{
+    search_bar(ui, img_data, data_shared);
+    let old_index = Index{folder: data_shared.main_img.folder, image: data_shared.main_img.image};
+
+    let icon_size = 100.0;
+    let padded_size = icon_size + ui.style_mut().spacing.item_spacing.x;
+    let width = ui.available_width();
+    let mut folder_to_close = None;
+
+    let (columns, row_heights) = calc_table_dims(width, padded_size, img_data, data_shared);
+
+    TableBuilder::new(ui)
+    .columns(Column::remainder().at_least(100.0), columns)
+    .body(|body| {
+        body.heterogeneous_rows(row_heights.into_iter(), |mut row| {
+            let (is_folder, indexes) = get_indexes(row.index(), columns, img_data);
+
+            if is_folder
+            {
+                let folder = &mut img_data.folders[indexes[0].folder];
+                row.col(|ui| {
+                    if ui.add_sized([icon_size, 30.0], Button::new(folder.btn_path.clone())).clicked()
+                    {
+                        folder_to_close = Some(indexes[0].folder);
+                    }
+                });
+                return;
+            }
+
+            for index in &indexes
+            {
+                row.col(|ui| {
+                    
+                    let image = &mut img_data.folders[index.folder].images[index.image];
+
+                    match image.thumb_state()
+                    {
+                        Status::Unloaded => 
+                        {
+                            image.load_thumb(); 
+                        }
+
+                        Status::Loading =>
+                        {
+                            image.poll_thumb(ui); 
+                            ui.add_sized([icon_size, icon_size], egui::widgets::Spinner::new());
+                        }
+                        
+                        Status::Loaded => 
+                        {
+                            let texture = image.thumb_texture.clone().unwrap();
+
+                            let img_response = 
+                            ui.add_sized([icon_size, icon_size],
+                                egui::Image::new(&texture)
+                                    .sense(egui::Sense {
+                                        click: (true),
+                                        drag: (true),
+                                        focusable: (true),
+                                    }),
+                            );
+
+                            if img_response.clicked()
+                            {
+                                data_shared.main_img = index.clone();
+                                data_shared.last_update = Instant::now();
+                                data_shared.frame_index = 0;
+                            }
+                        }
+
+                        Status::Error => 
+                        { 
+                            let msg = "error loading ".to_string() + &image.file;
+                            ui.add_sized([100.0, 100.0],
+                                egui::Label::new(&msg)
+                            ); 
+                        }
+                    }
+                });
+            }
+                
+        });
+    });
+
+    if old_index != data_shared.main_img
+    {
+        img_data.folders[old_index.folder].images[old_index.image].clear_full();
+    }
+
+    if folder_to_close.is_some()
+    {
+        let folder = &mut img_data.folders[folder_to_close.unwrap()];
+        folder.collapsed = !folder.collapsed;
+    }
+}
+
 pub fn wndw_gallery(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared) -> ()
 {
-
     egui::CentralPanel::default().show(ui, |ui| {
-        search_bar(ui, img_data, data_shared);
+        show_gallery(ui, img_data, data_shared);       
+    });
+}
 
-        let icon_size = 100.0;
-        let padded_size = icon_size + ui.style_mut().spacing.item_spacing.x;
-        let width = ui.available_width();
-        let mut folder_to_close = None;
-
-        let (columns, row_heights) = calc_table_dims(width, padded_size, img_data, data_shared);
-
-        TableBuilder::new(ui)
-        .columns(Column::remainder(), columns)
-        .body(|body| {
-            body.heterogeneous_rows(row_heights.into_iter(), |mut row| {
-                let (is_folder, indexes) = get_indexes(row.index(), columns, img_data);
-
-                if is_folder
-                {
-                    let folder = &mut img_data.folders[indexes[0].folder];
-                    row.col(|ui| {
-                        if ui.add_sized([icon_size, 30.0], Button::new(folder.btn_path.clone())).clicked()
-                        {
-                            folder_to_close = Some(indexes[0].folder);
-                        }
-                    });
-                    return;
-                }
-
-                for index in &indexes
-                {
-                    row.col(|ui| {
-                        
-                        let image = &mut img_data.folders[index.folder].images[index.image];
-
-                        match image.thumb_state()
-                        {
-                            Status::Unloaded => 
-                            {
-                                image.load_thumb(); 
-                            }
-
-                            Status::Loading =>
-                            {
-                                image.poll_thumb(ui); 
-                                ui.add_sized([icon_size, icon_size], egui::widgets::Spinner::new());
-                            }
-                            
-                            Status::Loaded => 
-                            {
-                                let texture = image.thumb_texture.clone().unwrap();
-
-                                let img_response = 
-                                ui.add_sized([icon_size, icon_size],
-                                    egui::Image::new(&texture)
-                                        .sense(egui::Sense {
-                                            click: (true),
-                                            drag: (true),
-                                            focusable: (true),
-                                        }),
-                                );
-
-                                if img_response.clicked()
-                                {
-                                    data_shared.main_img = indexes[0].clone();
-                                    data_shared.last_update = Instant::now();
-                                    data_shared.frame_index = 0;
-                                }
-                            }
-
-                            Status::Error => 
-                            { 
-                                let msg = "error loading ".to_string() + &image.file;
-                                ui.add_sized([100.0, 100.0],
-                                    egui::Label::new(&msg)
-                                ); 
-                            }
-                        }
-                    });
-                }
-                    
-            });
-        });
-
-        if folder_to_close.is_some()
-        {
-            let folder = &mut img_data.folders[folder_to_close.unwrap()];
-            folder.collapsed = !folder.collapsed;
-        }
+pub fn wndw_left(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared) -> ()
+{
+    egui::SidePanel::left("left_panel")
+    .exact_width(120.0)
+    .resizable(false)
+    .show(ui, |ui| {
+        show_gallery(ui, img_data, data_shared);       
     });
 }

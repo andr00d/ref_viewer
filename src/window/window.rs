@@ -5,7 +5,6 @@ use crate::shared::{Shared, Textbox, Gallery};
 use crate::data::Data;
 use crate::data::image::Index;
 use crate::window::{WndwRight, wndw_right};
-use crate::window::wndw_left;
 use crate::window::wndw_toolbar;
 use crate::window::wndw_main;
 use crate::window::wndw_gallery;
@@ -46,7 +45,7 @@ impl eframe::App for RefViewer
         }
         else
         {
-            wndw_left::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
+            wndw_gallery::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
     
             let mut total_results = 0;
             for folder in &self.data_shared.results {total_results += folder.len();}
