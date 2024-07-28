@@ -1,4 +1,4 @@
-use std::time::Instant;
+use egui::Key;
 
 use crate::window::{RefViewer, ErrorWindow};
 use crate::shared::{Shared, Textbox, Gallery};
@@ -15,16 +15,12 @@ impl RefViewer
     fn new(img_data: Data, index: Index) -> Self 
     {
         let imagelist = img_data.build_vector(Vec::new(), Vec::new());
+        let data_shared = Shared::new(imagelist, index);
+
 
         Self { 
             img_data: img_data,
-            data_shared: Shared{main_img: index,
-                                active_input: Textbox::Search,
-                                gallery_type: Gallery::LeftBar,
-                                last_update: Instant::now(),
-                                frame_index: 0,
-                                search: "".to_string(),
-                                results: imagelist},
+            data_shared: data_shared,
             data_right: WndwRight{artist: "".to_string(), 
                                   link: "".to_string(), 
                                   tag: "".to_string()},
@@ -36,6 +32,8 @@ impl eframe::App for RefViewer
 {
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
+        get_inputs(ui, &mut self.data_shared);
+        handle_inputs(&mut self.img_data, &mut self.data_shared);
         wndw_toolbar::wndw_toolbar(ui, &mut self.img_data, &mut self.data_shared);
         
         if self.data_shared.gallery_type == Gallery::Full
@@ -59,6 +57,76 @@ impl eframe::App for RefViewer
                 wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
                 wndw_main::wndw_main(ui, &mut self.img_data, &mut self.data_shared);
             }
+        }
+    }
+}
+
+fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
+{
+    if data_shared.key_event.is_none() {return;}
+
+    let mut total_results = 0;
+    for folder in &data_shared.results {total_results += folder.len();}
+
+    match data_shared.key_event.unwrap()
+    {
+        Key::ArrowUp | Key::ArrowLeft =>
+        {
+            match data_shared.prev_result()
+            {
+                Some(x) => 
+                {
+                    img_data.folders[x.folder].images[x.image].clear_full();
+                    data_shared.main_img = x.clone();
+                },
+                None => (),
+            }
+        },
+
+        Key::ArrowDown | Key::ArrowRight =>
+        {
+            match data_shared.next_result()
+            {
+                Some(x) => 
+                {
+                    img_data.folders[x.folder].images[x.image].clear_full();
+                    data_shared.main_img = x.clone();
+                },
+                None => (),
+            }
+        },
+
+        Key::Escape =>
+        {
+            if data_shared.gallery_type == Gallery::LeftBar
+            {
+                data_shared.gallery_type = Gallery::Full;
+            }
+            println!("escape");
+        },
+
+        Key::Enter =>
+        {
+            println!("nope.");
+        }
+
+        _ => println!("unhandled keypress."),
+    }
+
+    data_shared.key_event=None;
+}
+
+fn get_inputs(ui: &egui::Context, data_shared: &mut Shared)
+{
+    // TODO: shift select multiple
+    let valid_keys = [Key::ArrowDown, Key::ArrowLeft, Key::ArrowRight, Key::ArrowUp,
+                      Key::Escape];
+
+    for key in valid_keys
+    {
+        if ui.input(|i| i.key_pressed(key)) 
+        {
+            data_shared.key_event = Some(key);
         }
     }
 }

@@ -1,3 +1,5 @@
+pub mod shared;
+
 use std::time::Instant;
 
 use crate::data::image::Index;
@@ -29,5 +31,6 @@ pub struct Shared
     pub last_update: Instant,
     pub frame_index: usize,
     pub search: String,
+    pub key_event: Option<egui::Key>,
     pub results: Vec<Vec<Index>>,
 }
