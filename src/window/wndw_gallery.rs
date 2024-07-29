@@ -1,5 +1,6 @@
 use std::time::Instant;
 use std::vec::Vec;
+use egui::Color32;
 use eframe::egui::{self, Button};
 use egui_extras::{TableBuilder, Column};
 
@@ -26,16 +27,22 @@ fn search_bar(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared) 
         itags.retain(|x| x.starts_with("-"));
         for part in &mut itags{part.remove(0);}
 
-        data_shared.results = img_data.build_vector(tags, itags);
-        if !data_shared.results[old_index.folder].contains(&old_index) && data_shared.results.len() > 0
+        data_shared.set_results(img_data.build_vector(tags, itags));
+        if !data_shared.get_results()[old_index.folder].contains(&old_index) && 
+            data_shared.get_result_size() > 0
         {
-            data_shared.main_img  = Index{folder: 0, image: 0};
-            for folder in &data_shared.results { if folder.len() > 0 {data_shared.main_img = folder[0].clone();} }
+            let mut index = Index{folder: 0, image: 0};
+            for folder in data_shared.get_results() 
+            { 
+                if folder.len() > 0 {index = folder[0].clone();} 
+            }
+            data_shared.main_img = index;
         }
     }
 
-    if resp_search.gained_focus(){data_shared.active_input = Textbox::Search;}
-    if data_shared.active_input == Textbox::Search {resp_search.request_focus();}        
+    if resp_search.gained_focus(){data_shared.active_input = Some(Textbox::Search);}
+    if data_shared.active_input.is_none() {return;}
+    if *data_shared.active_input.as_mut().unwrap() == Textbox::Search {resp_search.request_focus();}        
 }
 
 fn calc_table_dims (width: f32, icon_size: f32, img_data: &Data, data_shared: &Shared) -> (usize, Vec<f32>)
@@ -49,7 +56,7 @@ fn calc_table_dims (width: f32, icon_size: f32, img_data: &Data, data_shared: &S
         row_heights.push(30.0);
         if folder.collapsed {continue;}
 
-        let rows = (data_shared.results[f].len() + columns - 1) / columns;
+        let rows = (data_shared.get_results()[f].len() + columns - 1) / columns;
         for _i in 0..rows
         {
             row_heights.push(icon_size);
@@ -144,6 +151,7 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
                 row.col(|ui| {
                     
                     let image = &mut img_data.folders[index.folder].images[index.image];
+                    let is_main = *index == data_shared.main_img;
 
                     match image.thumb_state()
                     {
@@ -164,12 +172,9 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
 
                             let img_response = 
                             ui.add_sized([icon_size, icon_size],
-                                egui::Image::new(&texture)
-                                    .sense(egui::Sense {
-                                        click: (true),
-                                        drag: (true),
-                                        focusable: (true),
-                                    }),
+                                egui::Button::image(&texture)
+                                .fill(Color32::TRANSPARENT)
+                                .selected(is_main)
                             );
 
                             if img_response.clicked()

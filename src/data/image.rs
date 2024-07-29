@@ -104,10 +104,16 @@ impl Image
                 Err(_x) => return Err(format!("Error when decoding {}.", path)),
             };
  
-            let image = decoded.resize(100, 100, FilterType::Nearest);
-            let size = [image.width() as _, image.height() as _];
-            let image_buffer = image.to_rgba8();
-            let pixels = image_buffer.as_flat_samples();
+            let mut background = image::ImageBuffer::from_pixel(100, 100, image::Rgba([0,0,0,0]));
+            let mut image = decoded.resize(100, 100, FilterType::Nearest);
+            
+            let x_offset = ((100 - image.width()) / 2) as i64;
+            let y_offset = ((100 - image.height()) / 2) as i64;
+            image::imageops::overlay(&mut background, &mut image, x_offset, y_offset);
+            
+            let size = [background.width() as _, background.height() as _];
+            // let image_buffer = background.to_rgba8();
+            let pixels = background.as_flat_samples();
 
             Ok(egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice(),))
         })

@@ -1,7 +1,7 @@
 use egui::Key;
 
 use crate::window::{RefViewer, ErrorWindow};
-use crate::shared::{Shared, Textbox, Gallery};
+use crate::shared::{Shared, Gallery};
 use crate::data::Data;
 use crate::data::image::Index;
 use crate::window::{WndwRight, wndw_right};
@@ -38,17 +38,17 @@ impl eframe::App for RefViewer
         
         if self.data_shared.gallery_type == Gallery::Full
         {
-            wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
+            if self.data_shared.get_result_size() > 0
+            {
+                wndw_right::wndw_right(ui, &mut self.img_data, &mut self.data_shared, &mut self.data_right);
+            }
             wndw_gallery::wndw_gallery(ui, &mut self.img_data, &mut self.data_shared);
         }
         else
         {
             wndw_gallery::wndw_left(ui, &mut self.img_data, &mut self.data_shared);
     
-            let mut total_results = 0;
-            for folder in &self.data_shared.results {total_results += folder.len();}
-        
-            if total_results == 0
+            if self.data_shared.get_result_size() == 0
             {
                 wndw_main::wndw_main_empty(ui);
             }
@@ -65,9 +65,7 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
 {
     if data_shared.key_event.is_none() {return;}
 
-    let mut total_results = 0;
-    for folder in &data_shared.results {total_results += folder.len();}
-
+    // TODO: handle up & down key better when in gallery mode.
     match data_shared.key_event.unwrap()
     {
         Key::ArrowUp | Key::ArrowLeft =>
@@ -98,16 +96,27 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
 
         Key::Escape =>
         {
-            if data_shared.gallery_type == Gallery::LeftBar
+            if data_shared.active_input != None
+            {
+                data_shared.active_input = None;
+            }
+
+            else if data_shared.gallery_type == Gallery::LeftBar
             {
                 data_shared.gallery_type = Gallery::Full;
             }
+
+            // TODO: close program?
             println!("escape");
         },
 
         Key::Enter =>
         {
-            println!("nope.");
+            if data_shared.gallery_type == Gallery::Full &&
+               data_shared.get_result_size() > 0
+            {
+                data_shared.gallery_type = Gallery::LeftBar;
+            }
         }
 
         _ => println!("unhandled keypress."),
@@ -120,7 +129,7 @@ fn get_inputs(ui: &egui::Context, data_shared: &mut Shared)
 {
     // TODO: shift select multiple
     let valid_keys = [Key::ArrowDown, Key::ArrowLeft, Key::ArrowRight, Key::ArrowUp,
-                      Key::Escape];
+                      Key::Escape, Key::Enter];
 
     for key in valid_keys
     {

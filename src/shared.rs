@@ -26,11 +26,12 @@ pub enum Gallery
 pub struct Shared
 {
     pub main_img: Index,
-    pub active_input: Textbox,
+    pub active_input: Option<Textbox>,
     pub gallery_type: Gallery,
     pub last_update: Instant,
     pub frame_index: usize,
     pub search: String,
     pub key_event: Option<egui::Key>,
-    pub results: Vec<Vec<Index>>,
+    results: Vec<Vec<Index>>,
+    results_len: usize,
 }

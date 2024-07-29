@@ -1,20 +1,28 @@
 use std::time::Instant;
 
-use crate::shared::{Shared, Textbox, Gallery};
+use crate::shared::{Shared, Gallery};
 use crate::data::image::Index;
 
 impl Shared 
 {
     pub fn new(imagelist: Vec<Vec<Index>>, index: Index) -> Shared
     {
+        let mut count = 0;
+
+        for folder in &imagelist
+        {
+            count += folder.len();
+        }
+
         Shared{main_img: index,
-            active_input: Textbox::Search,
+            active_input: None,
             gallery_type: Gallery::LeftBar,
             last_update: Instant::now(),
             frame_index: 0,
             key_event: None,
             search: "".to_string(),
-            results: imagelist}
+            results: imagelist,
+            results_len: count}
     }
 
     pub fn next_result(&self) -> Option<Index>
@@ -58,5 +66,28 @@ impl Shared
         }
 
         return Some(self.results[f][pos.unwrap()-1].clone());
+    }
+
+    pub fn set_results(&mut self, imagelist: Vec<Vec<Index>>) -> ()
+    {
+        self.results = imagelist;
+        let mut count = 0;
+
+        for folder in &self.results
+        {
+            count += folder.len();
+        }
+
+        self.results_len = count;
+    }
+
+    pub fn get_results(&self) -> &Vec<Vec<Index>>
+    {
+        return &self.results;
+    }
+
+    pub fn get_result_size(&self) -> usize
+    {
+        return self.results_len;
     }
 }

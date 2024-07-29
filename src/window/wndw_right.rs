@@ -25,7 +25,7 @@ pub enum Action
 
 /////////////////////////
 
-fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, active: &mut Textbox, boxtype: Textbox) -> Option<Action>
+fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String, active: &mut Option<Textbox>, boxtype: Textbox) -> Option<Action>
 {
     let mut result = None;
 
@@ -69,8 +69,8 @@ fn display_vector(ui: &mut egui::Ui, vector: &Vec<String>, textbox: &mut String,
         textbox.clear();
     }
 
-    if resp_add.gained_focus() {*active = boxtype.clone();}
-    if active == &boxtype {resp_add.request_focus();}
+    if resp_add.gained_focus() {*active = Some(boxtype.clone());}
+    if active.is_some() && *active.as_mut().unwrap() == boxtype {resp_add.request_focus();}
 
     return result;
 }
