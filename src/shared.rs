@@ -4,8 +4,6 @@ use std::time::Instant;
 
 use crate::data::image::Index;
 
-// data shared between multiple windows
-
 #[derive(PartialEq)]
 #[derive(Clone)]
 pub enum Textbox
@@ -32,6 +30,8 @@ pub struct Shared
     pub frame_index: usize,
     pub search: String,
     pub key_event: Option<egui::Key>,
+    selected: Vec<Index>,
+    selected_tags: [Vec<(String, usize)>; 3],
     results: Vec<Vec<Index>>,
     results_len: usize,
 }

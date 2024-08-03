@@ -12,11 +12,15 @@ use crate::window::wndw_gallery;
 
 impl RefViewer
 {
-    fn new(img_data: Data, index: Index) -> Self 
+    fn new(mut img_data: Data, index: Index) -> Self 
     {
         let imagelist = img_data.build_vector(Vec::new(), Vec::new());
-        let data_shared = Shared::new(imagelist, index);
-
+        let mut data_shared = Shared::new(imagelist, index.clone());
+        
+        if data_shared.get_result_size() > 0 
+        {
+            data_shared.set_selected(&mut img_data, &index, &index);
+        }
 
         Self { 
             img_data: img_data,
@@ -70,12 +74,13 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
     {
         Key::ArrowUp | Key::ArrowLeft =>
         {
-            match data_shared.prev_result()
+            match data_shared.prev_result(&data_shared.main_img)
             {
                 Some(x) => 
                 {
                     img_data.folders[x.folder].images[x.image].clear_full();
                     data_shared.main_img = x.clone();
+                    data_shared.set_selected(img_data, &x, &x);
                 },
                 None => (),
             }
@@ -83,12 +88,13 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
 
         Key::ArrowDown | Key::ArrowRight =>
         {
-            match data_shared.next_result()
+            match data_shared.next_result(&data_shared.main_img)
             {
                 Some(x) => 
                 {
                     img_data.folders[x.folder].images[x.image].clear_full();
                     data_shared.main_img = x.clone();
+                    data_shared.set_selected(img_data, &x, &x);
                 },
                 None => (),
             }
@@ -107,15 +113,17 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
             }
 
             // TODO: close program?
-            println!("escape");
         },
 
         Key::Enter =>
         {
             if data_shared.gallery_type == Gallery::Full &&
+               data_shared.active_input == None &&
                data_shared.get_result_size() > 0
             {
                 data_shared.gallery_type = Gallery::LeftBar;
+                let index = data_shared.main_img.clone();
+                data_shared.set_selected(img_data, &index, &index);
             }
         }
 

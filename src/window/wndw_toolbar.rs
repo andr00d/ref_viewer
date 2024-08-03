@@ -59,8 +59,10 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
                     }
                     
                     data_shared.search = "".to_string();
+                    let index = data_shared.main_img.clone();
                     let imagelist = img_data.build_vector(Vec::new(), Vec::new());
                     data_shared.set_results(imagelist);
+                    data_shared.set_selected(img_data, &index, &index);
                 }
             });
 

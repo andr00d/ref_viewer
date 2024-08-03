@@ -1,18 +1,22 @@
+use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::shared::{Shared, Gallery};
 use crate::data::image::Index;
+use crate::data::Data;
 
 impl Shared 
 {
     pub fn new(imagelist: Vec<Vec<Index>>, index: Index) -> Shared
     {
         let mut count = 0;
+        for folder in &imagelist { count += folder.len(); }
 
-        for folder in &imagelist
-        {
-            count += folder.len();
-        }
+        let mut selected = Vec::new();
+        selected.push(index.clone());
+
+        //order: [artists, links, tags]
+        let tags_array: [Vec<(String, usize)>; 3] = Default::default();
 
         Shared{main_img: index,
             active_input: None,
@@ -21,16 +25,19 @@ impl Shared
             frame_index: 0,
             key_event: None,
             search: "".to_string(),
+            selected: selected,
+            selected_tags: tags_array,
             results: imagelist,
-            results_len: count}
+            results_len: count,}
     }
 
-    pub fn next_result(&self) -> Option<Index>
+    //////////////////////////
+
+    pub fn next_result(&self, index: &Index) -> Option<Index>
     {
-        let mut f = self.main_img.folder;
-        let pos = self.results[f].iter().position(|n| *n == self.main_img);
+        let mut f = index.folder;
+        let pos = self.results[f].iter().position(|n| n == index);
         if pos.is_none() {return None;}
-        
         
         if pos.unwrap() == self.results[f].len() - 1
         {
@@ -45,12 +52,11 @@ impl Shared
         return Some(self.results[f][pos.unwrap()+1].clone());
     }
 
-    pub fn prev_result(&self) -> Option<Index>
+    pub fn prev_result(&self, index: &Index) -> Option<Index>
     {
-        let mut f = self.main_img.folder;
-        let pos = self.results[f].iter().position(|n| *n == self.main_img);
+        let mut f = index.folder;
+        let pos = self.results[f].iter().position(|n| n == index);
         if pos.is_none() {return None;}
-        
         
         if pos.unwrap() == 0
         {
@@ -67,6 +73,85 @@ impl Shared
 
         return Some(self.results[f][pos.unwrap()-1].clone());
     }
+
+    //////////////////////////
+
+    pub fn update_tags(&mut self, img_data: &mut Data)
+    {
+        for tags in &mut self.selected_tags {tags.clear();}
+        let mut artistcounts: HashMap<String, usize> = HashMap::new();
+        let mut linkcounts: HashMap<String, usize> = HashMap::new();
+        let mut tagcounts: HashMap<String, usize> = HashMap::new();
+        
+        for index in &self.selected
+        {
+            let img = &img_data.folders[index.folder].images[index.image];
+            
+            for tag in &img.artists {*artistcounts.entry(tag.to_string()).or_insert(0) += 1;}
+            for tag in &img.links   {*linkcounts.entry(tag.to_string()).or_insert(0) += 1;}
+            for tag in &img.tags    {*tagcounts.entry(tag.to_string()).or_insert(0) += 1;}
+        }
+        
+        self.selected_tags[0] = artistcounts.into_iter().collect();
+        self.selected_tags[1] = linkcounts.into_iter().collect();
+        self.selected_tags[2] = tagcounts.into_iter().collect();
+
+        for i in 0..self.selected_tags.len()
+        {
+            self.selected_tags[i].sort_by(|a, b| {
+                if a.1 != b.1  {return b.1.cmp(&a.1);}
+                else {return b.0.cmp(&a.0)};
+            });
+        }
+    }
+
+    pub fn add_selected(&mut self, img_data: &mut Data, index: &Index) -> ()
+    {
+        self.selected.push(index.clone());
+        self.update_tags(img_data);
+    }
+
+    pub fn set_selected(&mut self, img_data: &mut Data, a: &Index, b: &Index) -> ()
+    {
+        let a_pos = self.results[a.folder].iter().position(|n| n == a);
+        let b_pos = self.results[b.folder].iter().position(|n| n == b);
+        if a_pos.is_none() && b_pos.is_none() {return;}
+
+        let (start, end); 
+        if a.folder < b.folder || (a.folder == b.folder && a.image < b.image)
+        {
+            start = a.clone();
+            end = b.clone();
+        }
+        else
+        {
+            start = b.clone();
+            end = a.clone();
+        } 
+
+        self.selected.clear();
+        self.selected.push(start.clone());
+
+        while self.selected.last().unwrap() != &end
+        {
+            let index = self.next_result(&self.selected.last().unwrap());
+            self.selected.push(index.unwrap());
+        }
+
+        self.update_tags(img_data);
+    }
+
+    pub fn get_selected(&self) -> &Vec<Index>
+    {
+        return &self.selected;
+    }
+
+    pub fn get_selected_tags(&self) -> &[Vec<(String, usize)>; 3]
+    {
+        return &self.selected_tags;
+    }
+
+    //////////////////////////
 
     pub fn set_results(&mut self, imagelist: Vec<Vec<Index>>) -> ()
     {

@@ -5,7 +5,7 @@ use eframe::egui::{self, Button};
 use egui_extras::{TableBuilder, Column};
 
 use crate::data::image::{Status, Index};
-use crate::shared::{Shared, Textbox};
+use crate::shared::{Shared, Gallery, Textbox};
 use crate::data::Data;
 
 /////////////////////////
@@ -151,7 +151,7 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
                 row.col(|ui| {
                     
                     let image = &mut img_data.folders[index.folder].images[index.image];
-                    let is_main = *index == data_shared.main_img;
+                    let is_selected = data_shared.get_selected().contains(index);
 
                     match image.thumb_state()
                     {
@@ -174,12 +174,28 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
                             ui.add_sized([icon_size, icon_size],
                                 egui::Button::image(&texture)
                                 .fill(Color32::TRANSPARENT)
-                                .selected(is_main)
+                                .selected(is_selected)
                             );
 
-                            if img_response.clicked()
+                            // ony allow multi selection in gallery mode
+                            if img_response.clicked && ui.input(|i| i.modifiers.command_only()) &&
+                                data_shared.gallery_type == Gallery::Full
+                            {
+                                data_shared.add_selected(img_data, index);
+                            }
+
+                            // ony allow multi selection in gallery mode
+                            else if img_response.clicked && ui.input(|i| i.modifiers.shift_only()) &&
+                                data_shared.gallery_type == Gallery::Full
+                            {
+                                let main_img = data_shared.main_img.clone();
+                                data_shared.set_selected(img_data, &main_img, index);
+                            }
+
+                            else if img_response.clicked()
                             {
                                 data_shared.main_img = index.clone();
+                                data_shared.set_selected(img_data, index, index);
                                 data_shared.last_update = Instant::now();
                                 data_shared.frame_index = 0;
                             }
