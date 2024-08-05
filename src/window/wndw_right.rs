@@ -1,4 +1,5 @@
 use eframe::egui;
+use regex::Regex;
 use egui::widget_text::RichText;
 
 use crate::data::Data;
@@ -13,18 +14,28 @@ pub struct WndwRight
     pub tag: String,
 }
 
-// TODO: searchAdd, searchDel
 pub enum Action
 {
-    TagAdd(String),
-    TagDel(String),
-    LinkAdd(String),
-    LinkDel(String),
     ArtistAdd(String),
     ArtistDel(String),
+    LinkAdd(String),
+    LinkDel(String),
+    TagAdd(String),
+    TagDel(String),
+    SearchAdd(String),
+    SearchDel(String),
 }
 
 /////////////////////////
+
+fn add_button(ui: &mut egui::Ui, text: &str) -> bool
+{
+    let size = egui::Vec2{x:15.0, y:0.0};
+    let color = egui::Color32::TRANSPARENT;
+    ui.spacing_mut().item_spacing = egui::vec2(0.0, 2.0);
+
+    return ui.add(egui::Button::new(text).min_size(size).fill(color)).clicked() 
+}
 
 fn display_vector(ui: &mut egui::Ui, textbox: &mut String, data_shared: &mut Shared, boxtype: Textbox) -> Option<Action>
 {
@@ -49,12 +60,16 @@ fn display_vector(ui: &mut egui::Ui, textbox: &mut String, data_shared: &mut Sha
             },
             _ => 
             {
-                // TODO: get + and - working as actual buttons.
-                if *count == 1 { ui.add(egui::Label::new(format!(" +  -  {item}")).sense(egui::Sense::click()))}
-                else { ui.add(egui::Label::new(format!(" +  -  ({count}): {item}")).sense(egui::Sense::click()))}
+                ui.horizontal(|ui| {
+                    if add_button(ui, "+") {result = Some(Action::SearchAdd(item.clone()));}
+                    if add_button(ui, "-") {result = Some(Action::SearchDel(item.clone()));}
+
+                    if *count == 1 { ui.add(egui::Label::new(format!("{item}")).sense(egui::Sense::click()))}
+                    else { ui.add(egui::Label::new(format!("({count}): {item}")).sense(egui::Sense::click()))}
+                }).inner
             },
         };
-    
+
         resp_del.context_menu(|ui| {
             if ui.button("Delete item").clicked() 
             {
@@ -74,6 +89,8 @@ fn display_vector(ui: &mut egui::Ui, textbox: &mut String, data_shared: &mut Sha
             egui::TextEdit::singleline(textbox).hint_text("add item")
             .frame(false)
         );
+    let re = Regex::new(r"[^a-zA-Z\d_():]").unwrap();
+    *textbox = re.replace_all(textbox, "").to_string();
 
     if resp_add.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
     {
@@ -180,6 +197,8 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Sha
                         Action::LinkDel(x) => for i in data_shared.get_selected() {img_data.del_link(i, &x);},
                         Action::TagAdd(x) => for i in data_shared.get_selected() {img_data.add_tag(i, &x);},
                         Action::TagDel(x) => for i in data_shared.get_selected() {img_data.del_tag(i, &x);},
+                        Action::SearchAdd(x) => data_shared.add_to_search(img_data, x),
+                        Action::SearchDel(x) => data_shared.rem_from_search(img_data, x),
                     };
 
                     data_shared.update_tags(img_data);

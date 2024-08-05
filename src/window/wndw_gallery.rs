@@ -1,5 +1,6 @@
 use std::time::Instant;
 use std::vec::Vec;
+use regex::Regex;
 use egui::Color32;
 use eframe::egui::{self, Button};
 use egui_extras::{TableBuilder, Column};
@@ -12,32 +13,15 @@ use crate::data::Data;
 
 fn search_bar(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared) -> ()
 {
-    let old_index = Index{folder: data_shared.main_img.folder, image: data_shared.main_img.image};
-
     let resp_search = ui.add(egui::TextEdit::singleline(&mut data_shared.search).hint_text("search tags"));
     ui.add(egui::Separator::default());
 
+    let re = Regex::new(r"[^a-zA-Z\d\s\-_*():]").unwrap();
+    data_shared.search = re.replace_all(&data_shared.search, "").to_string();
 
     if resp_search.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
     {
-        let mut tags: Vec<String> = data_shared.search.split_whitespace().map(str::to_string).collect();
-        let mut itags = tags.clone();
-
-        tags.retain(|x| !x.starts_with("-"));
-        itags.retain(|x| x.starts_with("-"));
-        for part in &mut itags{part.remove(0);}
-
-        data_shared.set_results(img_data.build_vector(tags, itags));
-        if !data_shared.get_results()[old_index.folder].contains(&old_index) && 
-            data_shared.get_result_size() > 0
-        {
-            let mut index = Index{folder: 0, image: 0};
-            for folder in data_shared.get_results() 
-            { 
-                if folder.len() > 0 {index = folder[0].clone();} 
-            }
-            data_shared.main_img = index;
-        }
+        data_shared.update_search(img_data);
     }
 
     if resp_search.gained_focus(){data_shared.active_input = Some(Textbox::Search);}
@@ -66,7 +50,7 @@ fn calc_table_dims (width: f32, icon_size: f32, img_data: &Data, data_shared: &S
     return (columns, row_heights);
 }
 
-fn get_indexes (row: usize, columns: usize, img_data: &Data) -> (bool, Vec<Index>)
+fn get_indexes (row: usize, columns: usize, img_data: &Data, data_shared: &Shared) -> (bool, Vec<Index>)
 {
     let mut f = 0;
     let mut i = row;
@@ -88,7 +72,8 @@ fn get_indexes (row: usize, columns: usize, img_data: &Data) -> (bool, Vec<Index
         }
 
         i -= 1;
-        let folder_rows = (folder.images.len() + columns - 1) / columns;
+        let folder_size = data_shared.get_results()[f].len();
+        let folder_rows = (folder_size + columns - 1) / columns;
 
         if folder_rows <= i
         {
@@ -102,13 +87,14 @@ fn get_indexes (row: usize, columns: usize, img_data: &Data) -> (bool, Vec<Index
         }
     }
 
-    let folder = &img_data.folders[f];
+    let folder_size = data_shared.get_results()[f].len();
     let imgs_start = i*columns;
-    let imgs_row = std::cmp::min(columns, folder.images.len() - imgs_start);
+    let imgs_row = std::cmp::min(columns, folder_size - imgs_start);
 
     for j in imgs_start..imgs_start + imgs_row
     {
-        indexes.push(Index{folder:f, image:j});
+        indexes.push(data_shared.get_results()[f][j].clone());
+        // indexes.push(Index{folder:f, image:j});
     }
 
     return (false, indexes);
@@ -132,7 +118,7 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
     .columns(Column::remainder().at_least(100.0), columns)
     .body(|body| {
         body.heterogeneous_rows(row_heights.into_iter(), |mut row| {
-            let (is_folder, indexes) = get_indexes(row.index(), columns, img_data);
+            let (is_folder, indexes) = get_indexes(row.index(), columns, img_data, data_shared);
 
             if is_folder
             {

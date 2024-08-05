@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::time::Instant;
+use regex::Regex;
 
 use crate::shared::{Shared, Gallery};
 use crate::data::image::Index;
@@ -76,7 +77,7 @@ impl Shared
 
     //////////////////////////
 
-    pub fn update_tags(&mut self, img_data: &mut Data)
+    pub fn update_tags(&mut self, img_data: &Data)
     {
         for tags in &mut self.selected_tags {tags.clear();}
         let mut artistcounts: HashMap<String, usize> = HashMap::new();
@@ -111,7 +112,7 @@ impl Shared
         self.update_tags(img_data);
     }
 
-    pub fn set_selected(&mut self, img_data: &mut Data, a: &Index, b: &Index) -> ()
+    pub fn set_selected(&mut self, img_data: &Data, a: &Index, b: &Index) -> ()
     {
         let a_pos = self.results[a.folder].iter().position(|n| n == a);
         let b_pos = self.results[b.folder].iter().position(|n| n == b);
@@ -153,17 +154,53 @@ impl Shared
 
     //////////////////////////
 
-    pub fn set_results(&mut self, imagelist: Vec<Vec<Index>>) -> ()
+    pub fn update_search(&mut self, img_data: &Data) -> ()
     {
-        self.results = imagelist;
+        let mut tags: Vec<String> = self.search.split_whitespace().map(str::to_string).collect();
+        let mut itags = tags.clone();
+
+        tags.retain(|x| !x.starts_with("-"));
+        itags.retain(|x| x.starts_with("-"));
+        for part in &mut itags{part.remove(0);}
+
+
+        self.results = img_data.build_vector(tags, itags);
+
         let mut count = 0;
-
-        for folder in &self.results
-        {
-            count += folder.len();
-        }
-
+        for folder in &self.results {count += folder.len();}
         self.results_len = count;
+
+        if !self.results[self.main_img.folder].contains(&self.main_img) && self.results.len() > 0
+        {
+            let mut index = Index{folder: 0, image: 0};
+            for folder in &self.results 
+            { 
+                if folder.len() > 0 {index = folder[0].clone(); break;} 
+            }
+            self.set_selected(img_data, &index, &index);
+            self.main_img = index;
+        }
+    }
+
+    pub fn rem_from_search(&mut self, img_data: &Data, tag: &String)
+    {
+        self.search = str::replace(&self.search, tag, "");
+
+        let re = Regex::new(r"\s\s+").unwrap();
+        self.search = re.replace_all(&self.search, " ").to_string();
+
+        self.update_search(img_data);
+    }
+
+    pub fn add_to_search(&mut self, img_data: &Data, tag: &String)
+    {
+        if self.search.contains(tag) {return;}
+        self.search += &(" ".to_owned() + tag);
+
+        let re = Regex::new(r"\s\s+").unwrap();
+        self.search = re.replace_all(&self.search, " ").to_string();
+
+        self.update_search(img_data);
     }
 
     pub fn get_results(&self) -> &Vec<Vec<Index>>

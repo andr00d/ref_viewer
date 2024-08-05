@@ -135,7 +135,6 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
 
 fn get_inputs(ui: &egui::Context, data_shared: &mut Shared)
 {
-    // TODO: shift select multiple
     let valid_keys = [Key::ArrowDown, Key::ArrowLeft, Key::ArrowRight, Key::ArrowUp,
                       Key::Escape, Key::Enter];
 
