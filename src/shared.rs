@@ -30,6 +30,7 @@ pub struct Shared
     pub frame_index: usize,
     pub search: String,
     pub key_event: Option<egui::Key>,
+    pub show_popup: bool,
     selected: Vec<Index>,
     selected_tags: [Vec<(String, usize)>; 3],
     results: Vec<Vec<Index>>,

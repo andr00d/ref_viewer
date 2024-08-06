@@ -32,6 +32,53 @@ fn open_paths() -> std::vec::Vec<String>
     return paths;
 }
 
+fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
+{
+    let popup_size = egui::Vec2{x:500.0, y:300.0};
+    let window_size = ui.ctx().screen_rect().max;
+    let pos_min = (window_size - popup_size) / 2.0;
+    let pos_max = pos_min + popup_size;
+
+    egui::Window::new("About").title_bar(true).open(&mut data_shared.show_popup).fixed_size(popup_size)
+    .default_rect(egui::Rect{min: pos_min, max: pos_max}).show(ui.ctx(), |ui| {
+        ui.horizontal(|ui| {
+            ui.add(egui::Image::new(egui::include_image!("../../media/icon_big.png"))
+                   .fit_to_exact_size(egui::Vec2{x:200.0, y:200.0}));
+            
+            ui.vertical(|ui| {
+                ui.heading("Ref Viewer");
+
+                ui.add_space(12.0);
+                ui.label(format!("V{}", env!("CARGO_PKG_VERSION")));
+                ui.add_space(12.0);
+
+                ui.label(
+                    "Ref viewer is a simple image viewer that allows for tagging images and filtering based on those tags." 
+                );
+
+                ui.add_space(12.0);
+                ui.label("Copyright © 2024 Andr00d");
+                ui.label("Licensed under MIT.");
+                ui.hyperlink_to("Ref viewer Github", "https://github.com/andr00d/ref_viewer/");
+                ui.add_space(12.0);
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label("Uses ");
+                    ui.hyperlink_to("egui", "https://github.com/emilk/egui");
+                    ui.label(" for the GUI.");
+                });
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.hyperlink_to("Exiftool", "https://exiftool.org/");
+                    ui.label(" is used for reading and writing tags.");
+                });
+            });
+        });
+     });
+}
+
 pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared ) -> ()
 {
     egui::TopBottomPanel::top("my_panel").show(ui, |ui| {
@@ -65,10 +112,8 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
                 }
             });
 
-            if ui.button("About").clicked() 
-            {
-                std::println!("todo");
-            }
+            if ui.button("About").clicked() {data_shared.show_popup = true;}
+            if data_shared.show_popup {show_about(ui, data_shared);}
         });
     });
 }

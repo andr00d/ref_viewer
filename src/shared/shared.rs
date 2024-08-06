@@ -26,6 +26,7 @@ impl Shared
             frame_index: 0,
             key_event: None,
             search: "".to_string(),
+            show_popup: false,
             selected: selected,
             selected_tags: tags_array,
             results: imagelist,
