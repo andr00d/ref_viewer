@@ -5,9 +5,28 @@ use crate::data::Data;
 use crate::shared::{Shared, Gallery};
 use crate::data::image::Index;
 
-fn open_paths() -> std::vec::Vec<String>
+fn open_folder() -> Vec<String>
 {
-    let mut paths: std::vec::Vec<String> = Vec::new();
+    let mut paths: Vec<String> = Vec::new();
+ 
+    if let Some(fd_paths) = rfd::FileDialog::new().pick_folders()
+    {
+        for path in fd_paths
+        {
+            match path.to_str()
+            {
+                Some(x) => paths.push(x.to_string()),
+                None => (), //TODO: test not-utf8 path behaviour
+            }
+        }
+    }
+
+    return paths;
+}
+
+fn open_paths() -> Vec<String>
+{
+    let mut paths: Vec<String> = Vec::new();
  
     if let Some(fd_paths) = rfd::FileDialog::new()
         .add_filter("image", &["jpg", "jpeg", "png", "webp", "gif"])
@@ -21,15 +40,32 @@ fn open_paths() -> std::vec::Vec<String>
                 None => (), //TODO: test not-utf8 path behaviour
             }
         }
-
-        for path in &paths
-        {
-            std::println!("{}", path);
-        }
     }
 
-    // TODO: check folder inside other folder
     return paths;
+}
+
+fn update_data(img_data: &mut Data, data_shared: &mut Shared, paths: Vec<String>) -> ()
+{
+    // TODO: add popup about invalid paths. 
+    match img_data.open_paths(paths)
+    {
+        Some(x) =>
+        {
+            data_shared.main_img = x;
+            data_shared.gallery_type = Gallery::LeftBar;
+        }
+        None =>
+        {
+            data_shared.main_img = Index{folder:0, image: 0};
+            data_shared.gallery_type = Gallery::Full;
+        }
+    }
+    
+    data_shared.search = "".to_string();
+    let index = data_shared.main_img.clone();
+    data_shared.update_search(img_data);
+    data_shared.set_selected(img_data, &index, &index);
 }
 
 fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
@@ -85,30 +121,18 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
         menu::bar(ui, |ui| {
             ui.add_space(7.0);
             ui.menu_button("File", |ui| {
+                if ui.button("Open folder").clicked() 
+                {
+                    let paths = open_folder();
+                    if paths.len() == 0 {return;}
+                    update_data(img_data, data_shared, paths);
+                }
+
                 if ui.button("Open file").clicked() 
                 {
                     let paths = open_paths();
                     if paths.len() == 0 {return;}
-
-                    // TODO: add popup about invalid paths. 
-                    match img_data.open_paths(paths)
-                    {
-                        Some(x) =>
-                        {
-                            data_shared.main_img = x;
-                            data_shared.gallery_type = Gallery::LeftBar;
-                        }
-                        None =>
-                        {
-                            data_shared.main_img = Index{folder:0, image: 0};
-                            data_shared.gallery_type = Gallery::Full;
-                        }
-                    }
-                    
-                    data_shared.search = "".to_string();
-                    let index = data_shared.main_img.clone();
-                    data_shared.update_search(img_data);
-                    data_shared.set_selected(img_data, &index, &index);
+                    update_data(img_data, data_shared, paths);
                 }
             });
 

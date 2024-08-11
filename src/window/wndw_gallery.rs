@@ -180,10 +180,17 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
 
                             else if img_response.clicked()
                             {
-                                data_shared.main_img = index.clone();
-                                data_shared.set_selected(img_data, index, index);
-                                data_shared.last_update = Instant::now();
-                                data_shared.frame_index = 0;
+                                if data_shared.main_img == *index
+                                {
+                                    data_shared.gallery_type = Gallery::LeftBar;
+                                }
+                                else
+                                {
+                                    data_shared.main_img = index.clone();
+                                    data_shared.set_selected(img_data, index, index);
+                                    data_shared.last_update = Instant::now();
+                                    data_shared.frame_index = 0;
+                                }
                             }
                         }
 

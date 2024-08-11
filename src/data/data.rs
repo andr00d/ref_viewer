@@ -27,15 +27,44 @@ impl Data
     // data building //
     ///////////////////
 
-    // TODO: seperate recursive folders out into seperate ones.
+    fn recurse(&self, path: &Path) -> Vec<String> 
+    {
+        let Ok(entries) = std::fs::read_dir(path) else { return vec![] };
+        
+        entries.flatten().flat_map(|entry| {
+            let Ok(meta) = entry.metadata() else { return vec![] };
+            if meta.is_dir() 
+            { 
+                let mut paths = self.recurse(entry.path().as_path());
+                paths.insert(0, entry.path().to_str().unwrap().to_string());
+                return paths; 
+            }
+            vec![]
+        }).collect()
+    }
+
+    fn seperate_folders(&self, paths: &Vec::<String>) -> Vec::<String>
+    {
+        let mut folders = Vec::<String>::new();
+
+        for folder in paths
+        {
+            folders.push(folder.clone());
+            folders.append(&mut self.recurse(Path::new(folder)));
+        }
+
+        folders.sort_unstable();
+        folders.dedup();
+        return folders;
+    }
+
     pub fn open_paths(&mut self, paths: Vec::<String>) -> Option<Index>
     {
         self.folders.clear();
         self.taglist.clear();
 
         let mut index = None;
-
-        for (i, input_path) in paths.iter().enumerate()
+        for (i, input_path) in self.seperate_folders(&paths).iter().enumerate()
         {
             let mut path = Path::new(&input_path);
             let is_file = path.is_file();

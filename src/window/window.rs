@@ -70,6 +70,7 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
     if data_shared.key_event.is_none() {return;}
 
     // TODO: handle up & down key better when in gallery mode.
+    // TODO: when changing main img, move scrollbar
     match data_shared.key_event.unwrap()
     {
         Key::ArrowUp | Key::ArrowLeft =>
