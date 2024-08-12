@@ -107,8 +107,7 @@ impl Exiftool
 
     pub fn get_folder_data(&mut self, path: &String) ->  Result<String, String>
     {
-        // TODO: look into fast2 + only usercomment + width/height speed up bootup? 
-        let mut command = "\n-FileOrder8\nFileName\n-Artist\n-PageName\n-ImageSize\n-UserComment\n-json\n".to_string();
+        let mut command = "\n-FileOrder8\n-fast2\n-FileName\n-Artist\n-PageName\n-ImageDescription\n-ImageSize\n-UserComment\n-json\n".to_string();
         command.push_str("-ext\njpg\n-ext\npng\n-ext\nwebp\n-ext\ngif\n");
         command.push_str(path);
         command.push_str("\n-execute\n");
@@ -118,9 +117,22 @@ impl Exiftool
         return Ok(result);
     }   
 
-    pub fn set_usercomment(&mut self, path: &String, tag: &String) ->  Result<String, String>
+    pub fn set_notes(&mut self, path: &String, notes: &String) ->  Result<String, String>
     {
-        let mut command = "-overwrite_original\n-m\n-usercomment=".to_string();
+        let mut command = "-overwrite_original\n-m\n-UserComment=\"".to_string();
+        command.push_str(notes);
+        command.push_str("\"\n");
+        command.push_str(path);
+        command.push_str("\n-execute\n");
+
+        self.stdin.write(command.as_bytes()).unwrap();
+        let result = self.thd_rx.recv().unwrap();
+        return Ok(result);
+    }   
+
+    pub fn set_tags(&mut self, path: &String, tag: &String) ->  Result<String, String>
+    {
+        let mut command = "-overwrite_original\n-m\n-ImageDescription=".to_string();
         command.push_str(tag);
         command.push_str("\n");
         command.push_str(path);

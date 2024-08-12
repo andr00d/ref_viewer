@@ -12,6 +12,7 @@ pub enum Textbox
     Link,
     Artist,
     Tag,
+    Notes,
 }
 
 #[derive(PartialEq)]

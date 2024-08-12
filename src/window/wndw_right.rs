@@ -24,6 +24,7 @@ pub enum Action
     TagDel(String),
     SearchAdd(String),
     SearchDel(String),
+    SetNotes,
 }
 
 /////////////////////////
@@ -35,6 +36,20 @@ fn add_button(ui: &mut egui::Ui, text: &str) -> bool
     ui.spacing_mut().item_spacing = egui::vec2(0.0, 2.0);
 
     return ui.add(egui::Button::new(text).min_size(size).fill(color)).clicked() 
+}
+
+fn display_notes(ui: &mut egui::Ui, notes: &mut String, active: &mut Option<Textbox>) -> Option<Action>
+{
+    ui.add(egui::Label::new(RichText::new("notes")
+            .background_color(egui::Color32::from_black_alpha(100))
+            .size(10.0)));
+
+    let resp = ui.add(egui::TextEdit::multiline(notes).hint_text("add item"));
+    
+    if active.is_some() && *active.as_mut().unwrap() == Textbox::Notes {resp.request_focus();}
+    if resp.gained_focus() {*active = Some(Textbox::Notes);}
+    if resp.lost_focus() {return Some(Action::SetNotes);}
+    else {return None;}
 }
 
 fn display_vector(ui: &mut egui::Ui, textbox: &mut String, data_shared: &mut Shared, boxtype: Textbox) -> Option<Action>
@@ -117,7 +132,7 @@ fn info_main(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared, b
 {
     let mut tag_action = None;
     let single_image = data_shared.get_selected().len() == 1;
-    let img = &img_data.folders[data_shared.get_selected()[0].folder].images[data_shared.get_selected()[0].image];
+    let img = &mut img_data.folders[data_shared.get_selected()[0].folder].images[data_shared.get_selected()[0].image];
 
     ui.add(egui::Label::new(RichText::new("filepath")
         .background_color(egui::Color32::from_black_alpha(100))
@@ -170,6 +185,15 @@ fn info_main(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared, b
     let tag = display_vector(ui, &mut boxes.tag, data_shared, Textbox::Tag);
     if !tag.is_none() && tag_action.is_none() {tag_action = tag;}
 
+    /////////////////////////////////////////
+
+    if !single_image {return tag_action;}
+    ui.add(egui::Separator::default());
+    ui.add(egui::Separator::default());
+    
+    let notes = display_notes(ui, &mut img.notes, &mut data_shared.active_input);
+    if !notes.is_none() && tag_action.is_none() {tag_action = notes;}
+            
     return tag_action
 }
 
@@ -199,6 +223,7 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Sha
                         Action::TagDel(x) => for i in data_shared.get_selected() {img_data.del_tag(i, &x);},
                         Action::SearchAdd(x) => data_shared.add_to_search(img_data, x),
                         Action::SearchDel(x) => data_shared.rem_from_search(img_data, x),
+                        Action::SetNotes => img_data.set_notes(&data_shared.main_img),
                     };
 
                     data_shared.update_tags(img_data);

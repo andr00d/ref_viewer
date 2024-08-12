@@ -45,6 +45,7 @@ pub struct Image
     pub size: String, 
     pub links: Vec<String>, 
     pub tags: Vec<String>,
+    pub notes: String,
 
     // thumbnail
     pub thumb_texture: Option<TextureHandle>,
@@ -68,6 +69,7 @@ impl Image
         size: String, 
         links: Vec<String>, 
         tags: Vec<String>,
+        notes: String,
         ) -> Image 
     {
         Image{
@@ -76,6 +78,7 @@ impl Image
         size: size, 
         links: links, 
         tags: tags,
+        notes:notes,
 
         thumb_texture: None,
         thumb_thread: None,
@@ -92,7 +95,7 @@ impl Image
     {
         thread::spawn(move || -> Result<ColorImage, String>
         {
-            let input = match image::io::Reader::open(path.clone())
+            let input = match  image::ImageReader::open(path.clone())
             {
                 Ok(x) => x,
                 Err(_x) => return Err(format!("{} does not exist.", path)),
@@ -123,14 +126,15 @@ impl Image
     {
         thread::spawn(move || -> Result<Vec<FrameData>, String>
         {
-            let file = match image::io::Reader::open(path.clone())
+            let file = match  image::ImageReader::open(path.clone())
             {
                 Ok(x) => x,
                 Err(_x) => return Err(format!("{} does not exist.", path)),
             };
 
-            let mut images = Vec::<FrameData>::new();
             // handle webp and gif animations besides normal images by dumping everything into a vector
+            let mut images = Vec::<FrameData>::new();
+
             match Path::new(&path).extension().unwrap().to_str().unwrap()
             {
                 "webp" => 
@@ -139,7 +143,7 @@ impl Image
                     let decoder = match WebPDecoder::new(file.into_inner())
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                        Err(x) => return Err(format!("webp error: {}.", x)),
                     };
 
                     // into_frames doesn't work for webp images, only webp animations.
@@ -155,7 +159,7 @@ impl Image
                         let frames = match decoder.into_frames().collect_frames()
                         {
                             Ok(x) => x,
-                            Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                            Err(x) => return Err(format!("webp error: {}.", x)),
                         };
                             
                         for frame in frames
@@ -174,13 +178,13 @@ impl Image
                     let decoder = match GifDecoder::new(file.into_inner())
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                        Err(x) => return Err(format!("gif error: {}.", x)),
                     };
 
                     let frames = match decoder.into_frames().collect_frames()
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                        Err(x) => return Err(format!("gif error: {}.", x)),
                     };
 
                     for frame in frames
@@ -205,7 +209,7 @@ impl Image
                             let image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
                             images.push(FrameData{image: image, delay: 0});
                         },
-                        Err(_x) => return Err(format!("malformed image file: {}.", path)),
+                        Err(x) => return Err(format!("image error: {}.", x)),
                     }
                 }, 
             }
@@ -311,9 +315,10 @@ impl Image
         let result = match thread_result
         {
             Ok(x) => x,
-            Err(_x) => 
+            Err(x) => 
             {
-                println!("image loading error for {}", self.file);
+                println!("image loading error for {}:", self.file);
+                println!("{}", x);
                 self.full_state = Status::Error;
                 return
             }

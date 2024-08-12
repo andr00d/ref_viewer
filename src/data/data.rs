@@ -119,12 +119,15 @@ impl Data
         
         let str_artists = info.get("Artist").unwrap_or(empty).as_str().unwrap_or("");
         let str_links = info.get("PageName").unwrap_or(empty).as_str().unwrap_or("");
-        let str_tags = info.get("UserComment").unwrap_or(empty).as_str().unwrap_or("");
+        let str_tags = info.get("ImageDescription").unwrap_or(empty).as_str().unwrap_or("");
+        let str_notes = info.get("UserComment").unwrap_or(empty).as_str().unwrap_or("");
         let size = info.get("ImageSize").unwrap_or(empty).as_str().unwrap_or("");
         
         let artists = Self::read_json(&str_artists.to_string());
         let links = Self::read_json(&str_links.to_string());
         let tags = Self::read_json(&str_tags.to_string());
+        let notes = str_notes.replace("\\\"", "\"");
+
 
         let image = Image::new(
             file.to_string(), 
@@ -132,6 +135,7 @@ impl Data
             size.to_string(), 
             links, 
             tags,
+            notes,
         );
 
         return Ok(image)
@@ -369,10 +373,10 @@ impl Data
         Self::rem_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.set_usercomment(&img.file, &output);
+        let _ = self.exif.set_tags(&img.file, &output);
     }
 
-    pub fn add_tag(&mut self, img_index: &Index, tag: &String)
+    pub fn add_tag(&mut self, img_index: &Index, tag: &String) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         
@@ -380,7 +384,7 @@ impl Data
         Self::add_taglist(&mut self.taglist, img_index, tag);
 
         let output = Self::build_string(&img.tags);
-        let _ = self.exif.set_usercomment(&img.file, &output);
+        let _ = self.exif.set_tags(&img.file, &output);
     }
 
     pub fn del_link(&mut self, img_index: &Index, link: &String) -> ()
@@ -391,7 +395,7 @@ impl Data
         let _ = self.exif.set_link(&img.file, &output);
     }
 
-    pub fn add_link(&mut self, img_index: &Index, link: &String)
+    pub fn add_link(&mut self, img_index: &Index, link: &String) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
         img.add_link(link);
@@ -410,7 +414,7 @@ impl Data
         let _ = self.exif.set_artist(&img.file, &output);
     }
 
-    pub fn add_artist(&mut self, img_index: &Index, artist: &String)
+    pub fn add_artist(&mut self, img_index: &Index, artist: &String) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
 
@@ -419,5 +423,11 @@ impl Data
         
         let output = Self::build_string(&img.artists);
         let _ = self.exif.set_artist(&img.file, &output);
+    }
+
+    pub fn set_notes(&mut self, img_index: &Index) -> ()
+    {
+        let img = &mut self.folders[img_index.folder].images[img_index.image];
+        let _ = self.exif.set_notes(&img.file, &img.notes);
     }
 }
