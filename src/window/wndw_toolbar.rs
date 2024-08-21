@@ -29,7 +29,7 @@ fn open_paths() -> Vec<String>
     let mut paths: Vec<String> = Vec::new();
  
     if let Some(fd_paths) = rfd::FileDialog::new()
-        .add_filter("image", &["jpg", "jpeg", "png", "webp", "gif"])
+        .add_filter("image", &["jpg", "jpeg", "png", "tga", "tiff", "webp", "gif"])
         .pick_files() 
     {
         for path in fd_paths
@@ -136,7 +136,7 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
                 }
             });
 
-            if ui.button("About").clicked() {data_shared.show_popup = true;}
+            if ui.button("About").clicked() {data_shared.show_popup = !data_shared.show_popup;}
             if data_shared.show_popup {show_about(ui, data_shared);}
         });
     });

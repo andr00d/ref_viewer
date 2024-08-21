@@ -204,30 +204,32 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Sha
         .resizable(false)
         .default_width(150.0)
         .show(ui, |ui| {
-            match data_shared.get_selected().len()
-            {
-                0 => return,
-                _ => 
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                match data_shared.get_selected().len()
                 {
-                    let action = info_main(ui, img_data, data_shared, boxes);
-                    
-                    if action.is_none() {return;}
-
-                    match action.as_ref().unwrap()
+                    0 => return,
+                    _ => 
                     {
-                        Action::ArtistAdd(x) => for i in data_shared.get_selected() {img_data.add_artist(i, &x);},
-                        Action::ArtistDel(x) => for i in data_shared.get_selected() {img_data.del_artist(i, &x);},
-                        Action::LinkAdd(x) => for i in data_shared.get_selected() {img_data.add_link(i, &x);},
-                        Action::LinkDel(x) => for i in data_shared.get_selected() {img_data.del_link(i, &x);},
-                        Action::TagAdd(x) => for i in data_shared.get_selected() {img_data.add_tag(i, &x);},
-                        Action::TagDel(x) => for i in data_shared.get_selected() {img_data.del_tag(i, &x);},
-                        Action::SearchAdd(x) => data_shared.add_to_search(img_data, x),
-                        Action::SearchDel(x) => data_shared.rem_from_search(img_data, x),
-                        Action::SetNotes => img_data.set_notes(&data_shared.main_img),
-                    };
+                        let action = info_main(ui, img_data, data_shared, boxes);
+                        
+                        if action.is_none() {return;}
 
-                    data_shared.update_tags(img_data);
-                },
-            }
+                        match action.as_ref().unwrap()
+                        {
+                            Action::ArtistAdd(x) => for i in data_shared.get_selected() {img_data.add_artist(i, &x);},
+                            Action::ArtistDel(x) => for i in data_shared.get_selected() {img_data.del_artist(i, &x);},
+                            Action::LinkAdd(x) => for i in data_shared.get_selected() {img_data.add_link(i, &x);},
+                            Action::LinkDel(x) => for i in data_shared.get_selected() {img_data.del_link(i, &x);},
+                            Action::TagAdd(x) => for i in data_shared.get_selected() {img_data.add_tag(i, &x);},
+                            Action::TagDel(x) => for i in data_shared.get_selected() {img_data.del_tag(i, &x);},
+                            Action::SearchAdd(x) => data_shared.add_to_search(img_data, x),
+                            Action::SearchDel(x) => data_shared.rem_from_search(img_data, x),
+                            Action::SetNotes => img_data.set_notes(&data_shared.main_img),
+                        };
+
+                        data_shared.update_tags(img_data);
+                    },
+                }
+            });
         });
 }

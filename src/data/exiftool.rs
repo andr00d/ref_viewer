@@ -32,18 +32,26 @@ impl Exiftool
     pub fn new() -> Option<Exiftool>
     {
         #[cfg(windows)]
-        let command = "exiftool.exe";
+        use std::os::windows::process::CommandExt;  
 
+        #[cfg(windows)]
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        #[cfg(windows)]
+        let exif_command = Command::new("exiftool.exe")
+                            .args(["-stay_open", "true", "-@", "-"])
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .spawn();
+        
         #[cfg(unix)]
-        let command = "exiftool";
-
-        let exif_command = Command::new(command)
+        let exif_command = Command::new("exiftool")
                             .args(["-stay_open", "true", "-@", "-"])
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .spawn();
 
-        if exif_command.is_err() {return None;}
         let mut exif = exif_command.unwrap();
 
         let (thd_tx, thd_rx) = mpsc::channel();
@@ -108,7 +116,7 @@ impl Exiftool
     pub fn get_folder_data(&mut self, path: &String) ->  Result<String, String>
     {
         let mut command = "\n-FileOrder8\n-fast2\n-FileName\n-Artist\n-PageName\n-ImageDescription\n-ImageSize\n-UserComment\n-json\n".to_string();
-        command.push_str("-ext\njpg\n-ext\npng\n-ext\nwebp\n-ext\ngif\n");
+        command.push_str("-ext\njpg\n-ext\njpeg\n-ext\npng\n-ext\ntga\n-ext\ntiff\n-ext\nwebp\n-ext\ngif\n");
         command.push_str(path);
         command.push_str("\n-execute\n");
 

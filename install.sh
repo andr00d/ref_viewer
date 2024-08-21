@@ -50,7 +50,7 @@ Type=Application
 Name=ref viewer
 Exec=$HOME/.local/bin/ref_viewer
 Icon=$HOME/.local/share/icons/ref_viewer/ref_viewer.png
-MimeType=inode/directory;image/gif;image/jpg;image/jpeg;image/png;image/webp
+MimeType=inode/directory;image/gif;image/jpg;image/jpeg;image/png;image/tga;image/tiff;image/webp
 Categories=Graphics;
 " > $app_dir/ref_viewer.desktop 
 

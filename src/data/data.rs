@@ -87,7 +87,7 @@ impl Data
 
             if is_file 
             {
-                index = Some(self.get_string_index(input_path)
+                index = Some(self.get_path_index(input_path)
                         .unwrap_or(Index{folder:0, image:0}));
             }
         }
@@ -116,6 +116,9 @@ impl Data
         let empty = &json!("");
         let file = info.get("SourceFile").unwrap_or(empty).as_str().unwrap_or("");
         if file.len() == 0 {return Err("filename incorrect")};
+
+        #[cfg(windows)]
+        let file = file.replace("/", "\\");
         
         let str_artists = info.get("Artist").unwrap_or(empty).as_str().unwrap_or("");
         let str_links = info.get("PageName").unwrap_or(empty).as_str().unwrap_or("");
@@ -276,13 +279,13 @@ impl Data
 
         return imglist;
     }
-
-    pub fn get_string_index(&self, path: &String) -> Option<Index>
+    
+    fn get_path_index(&self, path: &String) -> Option<Index>
     {
-        let img_folder = Path::new(path).parent().unwrap().to_string_lossy().into_owned();
+        let img_folder = Path::new(path).parent().unwrap();
         for (f, folder) in self.folders.iter().enumerate()
         {
-            if folder.path != img_folder {continue;}
+            if Path::new(&folder.path) != img_folder {continue;}
 
             for (i, image) in folder.images.iter().enumerate()
             {
@@ -428,6 +431,7 @@ impl Data
     pub fn set_notes(&mut self, img_index: &Index) -> ()
     {
         let img = &mut self.folders[img_index.folder].images[img_index.image];
-        let _ = self.exif.set_notes(&img.file, &img.notes);
+        let altered_notes = img.notes.replace("\"", "\\\"");
+        let _ = self.exif.set_notes(&img.file, &altered_notes);
     }
 }
