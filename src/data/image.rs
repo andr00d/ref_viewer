@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::thread::{self, JoinHandle};
 use eframe::egui::{Ui, ColorImage, TextureHandle};
+use egui::emath::TSTransform;
 use image::imageops::FilterType;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
@@ -54,7 +55,7 @@ pub struct Image
 
     // full view
     pub full_texture: Vec<TextureData>,
-    pub full_scale: Option<f32>,
+    pub transform: Option<TSTransform>,
     full_thread: Option<JoinHandle<Result<Vec<FrameData>, String>>>,
     full_state: Status,
 }
@@ -85,7 +86,7 @@ impl Image
         thumb_state: Status::Unloaded,
 
         full_texture: Vec::new(),
-        full_scale: None, 
+        transform: None, 
         full_thread: None,
         full_state: Status::Unloaded,
         }
@@ -325,10 +326,17 @@ impl Image
         };
 
         let mut buffer = Vec::new();
+        let text_options = egui::TextureOptions
+        {
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Linear,
+            wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: Some(egui::TextureFilter::Linear)
+        };
 
         for frame in result
         {
-            let texture = ui.ctx().load_texture(self.file.clone(), frame.image, Default::default());
+            let texture = ui.ctx().load_texture(self.file.clone(), frame.image, text_options);
             buffer.push(TextureData{image: texture, delay: frame.delay});
         }
 

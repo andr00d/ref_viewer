@@ -1,60 +1,138 @@
 use std::time::{Instant, Duration};
 use eframe::egui;
 use eframe::egui::Vec2;
+use egui::TextureHandle;
+use egui::emath::TSTransform;
 
 use crate::data::image::{Image, Status};
 use crate::shared::Shared;
 use crate::data::Data;
 
-
-fn calc_scale(ui: &mut egui::Ui, img: &mut Image) -> egui::Vec2
+fn get_frame(ui: &mut egui::Ui, img: &mut Image, data_shared: &mut Shared) -> TextureHandle
 {
-    let img_size = img.full_texture[0].image.size_vec2();
-    let ui_size = ui.available_size();
-    let scale = &mut img.full_scale;
-
-    match ui.input(|i| i.zoom_delta())
+    let texture = match img.full_texture.len()
     {
-        x if x == 1.0 => (),
-        scroll =>
+        1 => img.full_texture[0].image.clone(),
+        _ => 
         {
-            if scale.is_none()
+            let delay = img.full_texture[data_shared.frame_index].delay;
+            
+            if  Instant::now().duration_since(data_shared.last_update).as_millis() > delay.into()
             {
-                let x = if img_size.x > ui_size.x {ui_size.x} else {img_size.x};
-                let _ = scale.insert(x / img_size.x); 
+                data_shared.frame_index = (data_shared.frame_index + 1) % img.full_texture.len();
+                data_shared.last_update = Instant::now();
+                ui.ctx().request_repaint();
             }
             else
             {
-                match scroll 
-                {
-                    // make scaling non-linear to better handle extreme scaling?
-                    x if x < 1.0  => scale.insert(f32::max(0.05, scale.unwrap() - 0.05)),
-                    _             => scale.insert(f32::min(50.0, scale.unwrap() + 0.05)),
-                };
+                ui.ctx().request_repaint_after(Duration::from_millis(delay.into()));
+            }
 
-            };
+            img.full_texture[data_shared.frame_index].image.clone()
         },
+    };
+
+    return texture;
+}
+
+fn bounds_check(mut ts: TSTransform, img_size: Vec2, ui_size: Vec2, offset: Vec2) -> TSTransform
+{
+
+    let max_zoom = f32::max(4096.0, f32::min(img_size.x, img_size.y)) / f32::min(img_size.x, img_size.y);
+    let min_zoom = f32::min(64.0, f32::max(img_size.x, img_size.y)) / f32::max(img_size.x, img_size.y);
+    if ts.scaling < min_zoom {ts.scaling = min_zoom;}
+    if ts.scaling > max_zoom {ts.scaling = max_zoom;}
+    let scaled_size = img_size*ts.scaling;
+    
+    if ui_size.x > scaled_size.x { ts.translation.x = ((ui_size.x - scaled_size.x) / 2.0) + offset.x; }
+    if ui_size.y > scaled_size.y { ts.translation.y = ((ui_size.y - scaled_size.y) / 2.0) + offset.y; }
+    
+    if scaled_size.x >= ui_size.x
+    {
+        let x_max = -scaled_size.x + ui_size.x + offset.x;
+        if ts.translation.x > offset.x {ts.translation.x = offset.x;}
+        if ts.translation.x < x_max {ts.translation.x = x_max;}
+    }
+
+    if scaled_size.y >= ui_size.y
+    {
+        let y_max = -scaled_size.y + ui_size.y + offset.y;
+        if ts.translation.y > offset.y {ts.translation.y = offset.y;}
+        if ts.translation.y < y_max {ts.translation.y = y_max;}
     }
 
 
-    match scale
+    return ts;
+}
+
+fn calc_transform(ui: &mut egui::Ui, img: &mut Image) -> (TSTransform, bool)
+{
+    let mut interacted = false;
+    let ui_size = ui.available_size();
+    let img_size = img.full_texture[0].image.size_vec2();
+    let offset = ui.next_widget_position().to_vec2();
+
+    let mut transform = if img.transform == None
     {
-        Some(s) =>
+        let mut ts = TSTransform::default();
+
+        if img_size.x > ui_size.x || img_size.y > ui_size.y 
         {
-            let x = img_size.x * *s;
-            let y = img_size.y * *s;
-            return Vec2{x:x, y:y};
-        },
-        None => 
+            ts.scaling = f32::min(ui_size.x/img_size.x, ui_size.y/img_size.y);
+        }
+
+        ts.translation += offset;
+        ts
+    }
+    else {img.transform.unwrap()};
+
+    let (tid, rect) = ui.allocate_space(ui.available_size());
+    let response = ui.interact(rect, tid, egui::Sense::click_and_drag());
+    
+    if response.dragged() 
+    {
+        transform.translation += response.drag_delta(); 
+        interacted = true;
+    }
+
+    // thank you egui for letting me steal your example code
+    if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) 
+    {
+        if ui.rect_contains_pointer(rect) 
         {
-            let x = if img_size.x > ui_size.x {ui_size.x} else {img_size.x};
-            let y = if img_size.y > ui_size.y {ui_size.y} else {img_size.y};
-            return Vec2{x:x, y:y};
+            let pointer_in_layer = transform.inverse() * pointer;
+            let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
+
+            let max_zoom = f32::max(4096.0, f32::min(img_size.x, img_size.y)) / f32::min(img_size.x, img_size.y);
+            if !(zoom_delta > 1.0 && transform.scaling >= max_zoom)
+            {
+                transform = transform
+                    * TSTransform::from_translation(pointer_in_layer.to_vec2())
+                    * TSTransform::from_scaling(zoom_delta)
+                    * TSTransform::from_translation(-pointer_in_layer.to_vec2());
+            }
+
+            if zoom_delta != 1.0 {interacted = true;}
         }
     }
+
+    transform = bounds_check(transform, img_size, ui_size, offset);
+    return (transform, interacted);
+}
+
+fn show_img_area(ui: &mut egui::Ui, texture: TextureHandle, transform: TSTransform)
+{
+    let size = texture.size_vec2().to_pos2() * transform.scaling;
+    let min = transform.translation.to_pos2();
+    let max = min + size.to_vec2();
+    let rect = egui::Rect{min:min, max:max};
+
+    // image should not capture responses, so use paint_at
+    egui::Image::new(&texture).paint_at(ui, rect);
 }
 
 
+/////////////////////////////
 
 pub fn wndw_main_empty(ui: &egui::Context) -> ()
 {
@@ -72,67 +150,35 @@ pub fn wndw_main(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
 
     egui::CentralPanel::default().show(ui, |ui| {
 
-        egui::ScrollArea::both().show(ui, |ui| {
-            let window_area = egui::Rect{min:ui.next_widget_position(), 
-                  max:ui.next_widget_position() + ui.available_size()};
+        let offset = ui.next_widget_position();
+        let window_area = egui::Rect{min:offset, max:offset + ui.available_size()};
 
-
-            match img.full_state()
+        match img.full_state()
+        {
+            Status::Unloaded => 
             {
-                Status::Unloaded => 
-                {
-                    img.load_full(); 
-                }
-
-                Status::Loading =>
-                {
-                    img.poll_full(ui); 
-                    ui.put(window_area, egui::widgets::Spinner::new());
-                }
-                
-                Status::Loaded => 
-                {
-                    let texture = match img.full_texture.len()
-                    {
-                        1 => img.full_texture[0].image.clone(),
-                        _ => 
-                        {
-                            let delay = img.full_texture[data_shared.frame_index].delay;
-                            
-                            if  Instant::now().duration_since(data_shared.last_update).as_millis() > delay.into()
-                            {
-                                data_shared.frame_index = (data_shared.frame_index + 1) % img.full_texture.len();
-                                data_shared.last_update = Instant::now();
-                                ui.ctx().request_repaint();
-                            }
-                            else
-                            {
-                                ui.ctx().request_repaint_after(Duration::from_millis(delay.into()));
-                            }
-
-                            img.full_texture[data_shared.frame_index].image.clone()
-                        },
-                    };
-
-                    let scale = calc_scale(ui, img);
-                    let ui_size = ui.available_size();
-                    
-                    let x = if scale.x > ui_size.x {scale.x} else {ui_size.x};
-                    let y = if scale.y > ui_size.y {scale.y} else {ui_size.y};
-                    let window_area = egui::Rect{min:ui.next_widget_position(), 
-                        max:ui.next_widget_position() + Vec2{x:x, y:y}};
-
-                    ui.put(window_area, egui::Image::new(&texture)
-                            .fit_to_exact_size(scale));
-
-                }
-
-                Status::Error => 
-                { 
-                    let msg = "error loading ".to_string() + &img.file;
-                    ui.put(window_area, egui::Label::new(&msg));
-                }
+                img.load_full(); 
             }
-        });
+
+            Status::Loading =>
+            {
+                img.poll_full(ui); 
+                ui.put(window_area, egui::widgets::Spinner::new());
+            }
+                
+            Status::Loaded => 
+            {
+                let texture = get_frame(ui, img, data_shared);
+                let (transform, interacted) = calc_transform(ui, img);
+                show_img_area(ui, texture, transform);
+                if interacted {img.transform = Some(transform);}
+            }
+
+            Status::Error => 
+            { 
+                let msg = "error loading ".to_string() + &img.file;
+                ui.put(window_area, egui::Label::new(&msg));
+            }
+        }
     });
 }

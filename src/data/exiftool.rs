@@ -52,6 +52,7 @@ impl Exiftool
                             .stdout(Stdio::piped())
                             .spawn();
 
+        if exif_command.is_err() {return None;}
         let mut exif = exif_command.unwrap();
 
         let (thd_tx, thd_rx) = mpsc::channel();
