@@ -7,6 +7,7 @@ use serde_json::json;
 use crate::data::{Data, Folder, Image};
 use crate::data::exiftool::Exiftool;
 use crate::data::image::Index;
+use crate::shared::Shared;
 
 impl Data 
 {
@@ -58,13 +59,21 @@ impl Data
         return folders;
     }
 
-    pub fn open_paths(&mut self, paths: Vec::<String>) -> Option<Index>
+    pub fn close_folder(&mut self, data_shared: &mut Shared, path: String)
     {
-        self.folders.clear();
-        self.taglist.clear();
+        if let Some(i) = self.folders.iter().position(|f| f.path == path)
+        {
+            self.folders.remove(i);
+        };
 
+        data_shared.update_search(self);
+        self.build_tags();
+    }
+
+    pub fn open_folders(&mut self, paths: Vec::<String>) -> Option<Index>
+    {
         let mut index = None;
-        for (i, input_path) in self.seperate_folders(&paths).iter().enumerate()
+        for input_path in self.seperate_folders(&paths)
         {
             let mut path = Path::new(&input_path);
             let is_file = path.is_file();
@@ -79,7 +88,7 @@ impl Data
             }
 
             let str_path = path.to_str().unwrap().to_owned();
-            match self.set_folder_data(&str_path, i)
+            match self.set_folder_data(&str_path)
             {
                 Err(x) => println!("{}", x),
                 Ok(_) => (),
@@ -87,11 +96,12 @@ impl Data
 
             if is_file 
             {
-                index = Some(self.get_path_index(input_path)
+                index = Some(self.get_path_index(&input_path)
                         .unwrap_or(Index{folder:0, image:0}));
             }
         }
 
+        self.build_tags();
         return index;
     }
 
@@ -145,7 +155,7 @@ impl Data
     }
 
     // TODO: test non-existant folder
-    fn set_folder_data(&mut self, path: &String, index: usize) ->  Result<(), String>
+    fn set_folder_data(&mut self, path: &String) ->  Result<(), String>
     {
         let mut btn_path = path.to_string().clone();
         if btn_path.len() > 20
@@ -182,20 +192,11 @@ impl Data
             Err(_x) => return Err("Error with json output".to_string()),
         };
 
-        // TODO: handle in type->alphabetical order
-        let mut img_index = 0;
         for value in json.as_array().unwrap()
         {
             match Self::construct_image(value)
             {
-                Ok(x) => 
-                {
-                    let index = Index{folder:index, image:img_index};
-                    self.update_tags(&x.artists, &index);
-                    self.update_tags(&x.tags, &index);
-                    folder.images.push(x);
-                    img_index += 1
-                }
+                Ok(x) => folder.images.push(x),
                 Err(_x) => println!("error with image"),
             };
         }
@@ -299,11 +300,24 @@ impl Data
     // taglist //
     /////////////
 
-    fn update_tags(&mut self, tags: &Vec<String>, index: &Index)
+    fn build_tags(&mut self)
     {
-        for tag in tags
+        self.taglist.clear();
+
+        for (f, folder) in self.folders.iter().enumerate()
         {
-            self.taglist.entry(tag.clone()).or_default().push(index.clone());
+            for (i, image) in folder.images.iter().enumerate()
+            {
+                let index = Index{folder:f, image:i};
+                for tag in &image.artists
+                {
+                    self.taglist.entry(tag.clone()).or_default().push(index.clone());  
+                }
+                for tag in &image.tags
+                {
+                    self.taglist.entry(tag.clone()).or_default().push(index.clone());  
+                }
+            }
         }
     }
 

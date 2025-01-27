@@ -104,10 +104,12 @@ fn display_vector(ui: &mut egui::Ui, textbox: &mut String, data_shared: &mut Sha
             egui::TextEdit::singleline(textbox).hint_text("add item")
             .frame(false)
         );
-    let re = Regex::new(r"[^a-zA-Z\d_():]").unwrap();
+
+    let re = if boxtype == Textbox::Link {Regex::new(r"[^a-zA-Z\d_//.?():]").unwrap()}
+             else {Regex::new(r"[^a-zA-Z\d_():]").unwrap()};
     *textbox = re.replace_all(textbox, "").to_string();
 
-    if resp_add.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) 
+    if resp_add.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && textbox.len() > 0 
     {
         match boxtype
         {
@@ -203,6 +205,7 @@ pub fn wndw_right(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Sha
     egui::SidePanel::right("right_panel")
         .resizable(false)
         .default_width(150.0)
+        .max_width(150.0)
         .show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 match data_shared.get_selected().len()

@@ -37,7 +37,7 @@ impl eframe::App for RefViewer
     fn update(&mut self, ui: &egui::Context, _frame: &mut eframe::Frame) 
     {
         get_inputs(ui, &mut self.data_shared);
-        handle_inputs(&mut self.img_data, &mut self.data_shared);
+        handle_inputs(ui, &mut self.img_data, &mut self.data_shared);
         wndw_toolbar::wndw_toolbar(ui, &mut self.img_data, &mut self.data_shared);
         
         if self.data_shared.gallery_type == Gallery::Full
@@ -65,7 +65,7 @@ impl eframe::App for RefViewer
     }
 }
 
-fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
+fn handle_inputs(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared)
 {
     if data_shared.key_event.is_none() {return;}
 
@@ -81,6 +81,7 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
                 {
                     img_data.folders[x.folder].images[x.image].clear_full();
                     data_shared.main_img = x.clone();
+                    data_shared.frame_index = 0;
                     data_shared.set_selected(img_data, &x, &x);
                 },
                 None => (),
@@ -95,6 +96,7 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
                 {
                     img_data.folders[x.folder].images[x.image].clear_full();
                     data_shared.main_img = x.clone();
+                    data_shared.frame_index = 0;
                     data_shared.set_selected(img_data, &x, &x);
                 },
                 None => (),
@@ -113,7 +115,11 @@ fn handle_inputs(img_data: &mut Data, data_shared: &mut Shared)
                 data_shared.gallery_type = Gallery::Full;
             }
 
-            // TODO: close program?
+            else if data_shared.gallery_type == Gallery::Full
+            {
+                println!("exiting, thank you for using ref viewer!");
+                ui.send_viewport_cmd(egui::viewport::ViewportCommand::Close);
+            }
         },
 
         Key::Enter =>

@@ -48,7 +48,7 @@ fn open_paths() -> Vec<String>
 fn update_data(img_data: &mut Data, data_shared: &mut Shared, paths: Vec<String>) -> ()
 {
     // TODO: add popup about invalid paths. 
-    match img_data.open_paths(paths)
+    match img_data.open_folders(paths)
     {
         Some(x) =>
         {
@@ -68,6 +68,36 @@ fn update_data(img_data: &mut Data, data_shared: &mut Shared, paths: Vec<String>
     data_shared.set_selected(img_data, &index, &index);
 }
 
+////////////////////////////
+
+
+fn show_help(ui: &egui::Ui, data_shared: &mut Shared)
+{
+    let popup_size = egui::Vec2{x:500.0, y:300.0};
+    let window_size = ui.ctx().screen_rect().max;
+    let pos_min = (window_size - popup_size) / 2.0;
+    let pos_max = pos_min + popup_size;
+
+    egui::Window::new("Help").title_bar(true).open(&mut data_shared.show_popup_help).fixed_size(popup_size)
+    .default_rect(egui::Rect{min: pos_min, max: pos_max}).show(ui.ctx(), |ui| {
+        ui.horizontal(|ui| {
+            
+            ui.vertical(|ui| {
+                ui.label("opening and closing files:");
+                ui.label("folders/files can be added to the list using the open folders/open file dialog. you can close folders by right-clicking the button in the left window, and pressing 'close folder'.");
+                
+                ui.add_space(12.0);
+                ui.label("gallery view and image view:");
+                ui.label("there are two views: the image view and gallery view, switching from gallery to image is done by double-clicking an image. to exit back to gallery mode, press escape while viewing an image. pressing escape again will exit the application.");
+            
+                ui.add_space(12.0);
+                ui.label("tagging images:");
+                ui.label("images can have multiple tags to allow for easy searching, having multiple images selected will allow you to change tags on all selected.");            
+            });
+        });
+     });
+}
+
 fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
 {
     let popup_size = egui::Vec2{x:500.0, y:300.0};
@@ -75,7 +105,7 @@ fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
     let pos_min = (window_size - popup_size) / 2.0;
     let pos_max = pos_min + popup_size;
 
-    egui::Window::new("About").title_bar(true).open(&mut data_shared.show_popup).fixed_size(popup_size)
+    egui::Window::new("About").title_bar(true).open(&mut data_shared.show_popup_about).fixed_size(popup_size)
     .default_rect(egui::Rect{min: pos_min, max: pos_max}).show(ui.ctx(), |ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Image::new(egui::include_image!("../../media/icon_big.png"))
@@ -88,9 +118,7 @@ fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
                 ui.label(format!("V{}", env!("CARGO_PKG_VERSION")));
                 ui.add_space(12.0);
 
-                ui.label(
-                    "Ref viewer is a simple image viewer that allows for tagging images and filtering based on those tags." 
-                );
+                ui.label("Ref viewer is a simple image viewer that allows for tagging images and filtering based on those tags." );
 
                 ui.add_space(12.0);
                 ui.label("Copyright © 2024 Andr00d");
@@ -115,6 +143,9 @@ fn show_about(ui: &egui::Ui, data_shared: &mut Shared)
      });
 }
 
+////////////////////////////
+
+
 pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shared ) -> ()
 {
     egui::TopBottomPanel::top("my_panel").show(ui, |ui| {
@@ -136,8 +167,10 @@ pub fn wndw_toolbar(ui: &egui::Context, img_data: &mut Data, data_shared: &mut S
                 }
             });
 
-            if ui.button("About").clicked() {data_shared.show_popup = !data_shared.show_popup;}
-            if data_shared.show_popup {show_about(ui, data_shared);}
+            if ui.button("About").clicked() {data_shared.show_popup_about = !data_shared.show_popup_about;}
+            if ui.button("Help").clicked() {data_shared.show_popup_help = !data_shared.show_popup_help;}
+            if data_shared.show_popup_about {show_about(ui, data_shared);}
+            if data_shared.show_popup_help {show_help(ui, data_shared);}
         });
     });
 }

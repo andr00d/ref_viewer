@@ -58,7 +58,7 @@ fn main() -> Result<(), eframe::Error>
     {
         Ok(mut x) => 
         {
-            let index = x.open_paths(input_paths)
+            let index = x.open_folders(input_paths)
                 .unwrap_or(Index{folder:0, image:0});
             return run_window(x, index, options)
         },

@@ -26,7 +26,8 @@ impl Shared
             frame_index: 0,
             key_event: None,
             search: "".to_string(),
-            show_popup: false,
+            show_popup_about: false,
+            show_popup_help: false,
             selected: selected,
             selected_tags: tags_array,
             results: imagelist,
@@ -170,6 +171,7 @@ impl Shared
         let mut count = 0;
         for folder in &self.results {count += folder.len();}
         self.results_len = count;
+        if self.results_len == 0 {return;}
 
         if !self.results[self.main_img.folder].contains(&self.main_img) && self.results.len() > 0
         {
