@@ -70,7 +70,6 @@ fn handle_inputs(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
     if data_shared.key_event.is_none() {return;}
 
     // TODO: handle up & down key better when in gallery mode.
-    // TODO: when changing main img, move scrollbar
     match data_shared.key_event.unwrap()
     {
         Key::ArrowUp | Key::ArrowLeft =>
@@ -83,6 +82,7 @@ fn handle_inputs(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                     data_shared.main_img = x.clone();
                     data_shared.frame_index = 0;
                     data_shared.set_selected(img_data, &x, &x);
+                    data_shared.snap_to_index = true;
                 },
                 None => (),
             }
@@ -98,6 +98,7 @@ fn handle_inputs(ui: &egui::Context, img_data: &mut Data, data_shared: &mut Shar
                     data_shared.main_img = x.clone();
                     data_shared.frame_index = 0;
                     data_shared.set_selected(img_data, &x, &x);
+                    data_shared.snap_to_index = true;
                 },
                 None => (),
             }

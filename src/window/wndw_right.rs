@@ -40,6 +40,9 @@ fn add_button(ui: &mut egui::Ui, text: &str) -> bool
 
 fn display_notes(ui: &mut egui::Ui, notes: &mut String, active: &mut Option<Textbox>) -> Option<Action>
 {
+    let re = Regex::new(r"[^a-zA-Z\d_\ \\\//\-\|.?'!@#$%^&*():]").unwrap();
+    *notes = re.replace_all(notes, "").to_string();
+
     ui.add(egui::Label::new(RichText::new("notes")
             .background_color(egui::Color32::from_black_alpha(100))
             .size(10.0)));
@@ -48,7 +51,9 @@ fn display_notes(ui: &mut egui::Ui, notes: &mut String, active: &mut Option<Text
     
     if active.is_some() && *active.as_mut().unwrap() == Textbox::Notes {resp.request_focus();}
     if resp.gained_focus() {*active = Some(Textbox::Notes);}
-    if resp.lost_focus() {return Some(Action::SetNotes);}
+    if ui.add_sized([ui.available_width(), 10.0], 
+                    egui::Button::new("save note")).clicked()  {return Some(Action::SetNotes);}
+
     else {return None;}
 }
 

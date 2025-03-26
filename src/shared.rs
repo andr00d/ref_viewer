@@ -26,6 +26,7 @@ pub struct Shared
 {
     pub main_img: Index,
     pub active_input: Option<Textbox>,
+    pub snap_to_index: bool,
     pub gallery_type: Gallery,
     pub last_update: Instant,
     pub frame_index: usize,

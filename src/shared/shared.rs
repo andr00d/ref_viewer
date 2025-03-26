@@ -22,6 +22,7 @@ impl Shared
         Shared{main_img: index,
             active_input: None,
             gallery_type: Gallery::LeftBar,
+            snap_to_index: true,
             last_update: Instant::now(),
             frame_index: 0,
             key_event: None,

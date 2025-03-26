@@ -31,9 +31,9 @@ fn search_bar(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared) 
     if *data_shared.active_input.as_mut().unwrap() == Textbox::Search {resp_search.request_focus();}        
 }
 
-fn calc_table_dims (ui: &mut egui::Ui, img_data: &Data, data_shared: &Shared) -> (usize, Vec<f32>)
+fn calc_table_dims (ui: &egui::Ui, img_data: &Data, data_shared: &Shared) -> (usize, Vec<f32>)
 {
-    let padded_size = ICON_SIZE + ui.style_mut().spacing.item_spacing.x * 2.0;
+    let padded_size = ICON_SIZE + ui.style().spacing.item_spacing.x * 2.0;
     let columns = f32::max(1.0, (ui.available_width() / padded_size).floor()) as usize;
     let mut row_heights = Vec::new();
 
@@ -47,6 +47,34 @@ fn calc_table_dims (ui: &mut egui::Ui, img_data: &Data, data_shared: &Shared) ->
     }
 
     return (columns, row_heights);
+}
+
+fn get_snap_index (ui: &egui::Ui, img_data: &Data, data_shared: &mut Shared) -> Option<usize>
+{
+    if !data_shared.snap_to_index {return None;}
+    data_shared.snap_to_index = false;
+
+    let padded_size = ICON_SIZE + ui.style().spacing.item_spacing.x * 2.0;
+    let columns = f32::max(1.0, (ui.available_width() / padded_size).floor()) as usize;
+    let mut index = 0;
+
+    for (f, folder) in img_data.folders.iter().enumerate()
+    {
+        index += 1;
+        if folder.collapsed {continue;}
+
+        if f == data_shared.main_img.folder 
+        {
+            index += (data_shared.main_img.image + columns - 1) / columns;
+            return Some(index);
+        }
+        else 
+        {
+            index += (data_shared.get_results()[f].len() + columns - 1) / columns;
+        }
+    }
+
+    return None;
 }
 
 fn get_indexes (row: usize, columns: usize, img_data: &Data, data_shared: &Shared) -> (bool, Vec<Index>)
@@ -116,14 +144,14 @@ fn show_image(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared, 
     );
 
     // ony allow multi selection in gallery mode
-    if img_response.clicked && ui.input(|i| i.modifiers.command_only()) &&
+    if img_response.clicked() && ui.input(|i| i.modifiers.command_only()) &&
         data_shared.gallery_type == Gallery::Full
     {
         data_shared.add_selected(img_data, index);
     }
 
     // ony allow multi selection in gallery mode
-    else if img_response.clicked && ui.input(|i| i.modifiers.shift_only()) &&
+    else if img_response.clicked() && ui.input(|i| i.modifiers.shift_only()) &&
         data_shared.gallery_type == Gallery::Full
     {
         let main_img = data_shared.main_img.clone();
@@ -171,13 +199,16 @@ fn show_gallery(ui: &mut egui::Ui, img_data: &mut Data, data_shared: &mut Shared
 {
     search_bar(ui, img_data, data_shared);
     let (columns, row_heights) = calc_table_dims(ui, img_data, data_shared);
+    let snap_index = get_snap_index(ui, img_data, data_shared);
+    let mut table = TableBuilder::new(ui).columns(Column::remainder().at_least(ICON_SIZE), columns);
+    
+    if let Some(index) = snap_index {table = table.scroll_to_row(index, Some(egui::Align::Center));}
 
-    TableBuilder::new(ui)
-    .columns(Column::remainder().at_least(ICON_SIZE), columns)
-    .body(|body| {
+    table.body(|body| {
         body.heterogeneous_rows(row_heights.into_iter(), |mut row| {
             
-            let (is_folder, indexes) = get_indexes(row.index(), columns, img_data, data_shared);
+            let row_index = row.index();
+            let (is_folder, indexes) = get_indexes(row_index, columns, img_data, data_shared);
 
             if is_folder
             {
