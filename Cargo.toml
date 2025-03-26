@@ -1,18 +1,22 @@
 [package]
 name = "ref_viewer"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde_json = "1.0"
-egui =  "0.26"
-eframe =  "0.26"
-egui_extras =  {version = "0.26", features = ["image"] }
-image = { version = "0.24", default-features = false, features = [
+egui =  "0.31"
+eframe =  "0.31"
+rfd = "0.14"
+regex = "1.10.6"
+egui_extras =  {version = "0.31", features = ["image"] }
+image = { version = "0.25", default-features = false, features = [
   "jpeg",
   "png",
-  "gif",
+  "tga",
+  "tiff",
   "webp",
+  "gif",
 ] }

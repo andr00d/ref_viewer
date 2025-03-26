@@ -1,11 +1,14 @@
 use std::path::Path;
 use std::thread::{self, JoinHandle};
 use eframe::egui::{Ui, ColorImage, TextureHandle};
+use egui::emath::TSTransform;
 use image::imageops::FilterType;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::DynamicImage;
 use image::AnimationDecoder;
+
+/////////////////////////
 
 #[derive(PartialEq)]
 pub enum Status 
@@ -43,6 +46,7 @@ pub struct Image
     pub size: String, 
     pub links: Vec<String>, 
     pub tags: Vec<String>,
+    pub notes: String,
 
     // thumbnail
     pub thumb_texture: Option<TextureHandle>,
@@ -51,11 +55,12 @@ pub struct Image
 
     // full view
     pub full_texture: Vec<TextureData>,
-    pub full_scale: Option<f32>,
+    pub transform: Option<TSTransform>,
     full_thread: Option<JoinHandle<Result<Vec<FrameData>, String>>>,
     full_state: Status,
 }
 
+/////////////////////////
 
 impl Image 
 {
@@ -65,6 +70,7 @@ impl Image
         size: String, 
         links: Vec<String>, 
         tags: Vec<String>,
+        notes: String,
         ) -> Image 
     {
         Image{
@@ -73,13 +79,14 @@ impl Image
         size: size, 
         links: links, 
         tags: tags,
+        notes:notes,
 
         thumb_texture: None,
         thumb_thread: None,
         thumb_state: Status::Unloaded,
 
         full_texture: Vec::new(),
-        full_scale: None, 
+        transform: None, 
         full_thread: None,
         full_state: Status::Unloaded,
         }
@@ -89,7 +96,7 @@ impl Image
     {
         thread::spawn(move || -> Result<ColorImage, String>
         {
-            let input = match image::io::Reader::open(path.clone())
+            let input = match  image::ImageReader::open(path.clone())
             {
                 Ok(x) => x,
                 Err(_x) => return Err(format!("{} does not exist.", path)),
@@ -101,10 +108,16 @@ impl Image
                 Err(_x) => return Err(format!("Error when decoding {}.", path)),
             };
  
-            let image = decoded.resize(100, 100, FilterType::Nearest);
-            let size = [image.width() as _, image.height() as _];
-            let image_buffer = image.to_rgba8();
-            let pixels = image_buffer.as_flat_samples();
+            let mut background = image::ImageBuffer::from_pixel(100, 100, image::Rgba([0,0,0,0]));
+            let mut image = decoded.resize(100, 100, FilterType::Nearest);
+            
+            let x_offset = ((100 - image.width()) / 2) as i64;
+            let y_offset = ((100 - image.height()) / 2) as i64;
+            image::imageops::overlay(&mut background, &mut image, x_offset, y_offset);
+            
+            let size = [background.width() as _, background.height() as _];
+            // let image_buffer = background.to_rgba8();
+            let pixels = background.as_flat_samples();
 
             Ok(egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice(),))
         })
@@ -114,14 +127,15 @@ impl Image
     {
         thread::spawn(move || -> Result<Vec<FrameData>, String>
         {
-            let file = match image::io::Reader::open(path.clone())
+            let file = match  image::ImageReader::open(path.clone())
             {
                 Ok(x) => x,
                 Err(_x) => return Err(format!("{} does not exist.", path)),
             };
 
-            let mut images = Vec::<FrameData>::new();
             // handle webp and gif animations besides normal images by dumping everything into a vector
+            let mut images = Vec::<FrameData>::new();
+
             match Path::new(&path).extension().unwrap().to_str().unwrap()
             {
                 "webp" => 
@@ -130,7 +144,7 @@ impl Image
                     let decoder = match WebPDecoder::new(file.into_inner())
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                        Err(x) => return Err(format!("webp error: {}.", x)),
                     };
 
                     // into_frames doesn't work for webp images, only webp animations.
@@ -146,7 +160,7 @@ impl Image
                         let frames = match decoder.into_frames().collect_frames()
                         {
                             Ok(x) => x,
-                            Err(_x) => return Err(format!("malformed webp file: {}.", path)),
+                            Err(x) => return Err(format!("webp error: {}.", x)),
                         };
                             
                         for frame in frames
@@ -165,13 +179,13 @@ impl Image
                     let decoder = match GifDecoder::new(file.into_inner())
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                        Err(x) => return Err(format!("gif error: {}.", x)),
                     };
 
                     let frames = match decoder.into_frames().collect_frames()
                     {
                         Ok(x) => x,
-                        Err(_x) => return Err(format!("malformed gif file: {}.", path)),
+                        Err(x) => return Err(format!("gif error: {}.", x)),
                     };
 
                     for frame in frames
@@ -196,7 +210,7 @@ impl Image
                             let image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
                             images.push(FrameData{image: image, delay: 0});
                         },
-                        Err(_x) => return Err(format!("malformed image file: {}.", path)),
+                        Err(x) => return Err(format!("image error: {}.", x)),
                     }
                 }, 
             }
@@ -302,19 +316,27 @@ impl Image
         let result = match thread_result
         {
             Ok(x) => x,
-            Err(_x) => 
+            Err(x) => 
             {
-                println!("image loading error for {}", self.file);
+                println!("image loading error for {}:", self.file);
+                println!("{}", x);
                 self.full_state = Status::Error;
                 return
             }
         };
 
         let mut buffer = Vec::new();
+        let text_options = egui::TextureOptions
+        {
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Linear,
+            wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: Some(egui::TextureFilter::Linear)
+        };
 
         for frame in result
         {
-            let texture = ui.ctx().load_texture(self.file.clone(), frame.image, Default::default());
+            let texture = ui.ctx().load_texture(self.file.clone(), frame.image, text_options);
             buffer.push(TextureData{image: texture, delay: frame.delay});
         }
 

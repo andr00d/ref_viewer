@@ -3,7 +3,7 @@
 
 #define AppName "ref viewer"
 #define AppPathName "ref_viewer"
-#define AppVersion "0.1"
+#define AppVersion "1.0"
 #define AppPublisher "andr00d"
 #define AppURL "https://github.com/andr00d/ref_viewer"
 #define AppExeName "ref_viewer.exe"
@@ -22,12 +22,15 @@ AppUpdatesURL={#AppURL}
 DefaultDirName={autopf}\ref_viewer
 DisableProgramGroupPage=yes
 LicenseFile={#SourcePath}\LICENSE
-OutputBaseFilename=mysetup
+OutputBaseFilename=ref_viewer_installer
 ChangesAssociations=yes
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 Uninstallable=yes
+UninstallDisplayIcon="{#SourcePath}\media\icon.ico"
+SetupIconFile="{#SourcePath}\media\icon.ico"
+SetupLogging=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,6 +42,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourcePath}\target\release\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\exiftool.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\media\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}\exiftool_files\*"; DestDir: "{app}\exiftool_files"; Flags: ignoreversion recursesubdirs
 
 [Registry]
 ; jpg
@@ -71,6 +75,6 @@ Root: "HKCR"; Subkey: "Directory\shell\{#AppPathName}"; ValueType: string; Value
 Root: "HKCR"; Subkey: "Directory\shell\{#AppPathName}"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\icon.ico"; Flags: uninsdeletekey
 Root: "HKCR"; Subkey: "Directory\shell\{#AppPathName}\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}""  ""%1"""; Flags: uninsdeletekey
 
-[Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; 
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+[Icons]                                                                                         
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}";  IconFilename: "{app}\icon.ico"; 
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon

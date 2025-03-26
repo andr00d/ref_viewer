@@ -9,11 +9,11 @@ The program works for both linux and windows, but for now you will still get an 
 ### building
 For installing on linux, there is the expectation that you have both rust and exiftool already installed. If that is the case you can simply run the included install.sh script to automatically build and install the program
 
-For creating a windows executable, you can use the ref_viewer.iss file with inno setup to create an installer. Make sure the exiftool.exe file is in the same folder as the .iss file. 
+For creating a windows executable, you can use the ref_viewer.iss file with inno setup to create an installer. Make sure the exiftool.exe file and exiftool_files folder are in the same folder as the .iss file. 
 
 ### usage
 you can right click any jpg, png, gif, webp, or folder, and open it with ref viewer. It will recursively display all images in the folder.
 
 ### dependencies
 For the linux version, ref viewer requires [exiftool](https://exiftool.org/) to be installed to run. 
-For the windows version, ref viewer requires the standalone exif executable to be in the same folder as the ref viewer executable. 
+For the windows version, ref viewer requires the exif executable and exiftools_files folder to be in the same folder as the ref viewer executable. 
