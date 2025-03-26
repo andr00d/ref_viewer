@@ -42,6 +42,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourcePath}\target\release\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\exiftool.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourcePath}\media\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}\exiftool_files\*"; DestDir: "{app}\exiftool_files"; Flags: ignoreversion recursesubdirs
 
 [Registry]
 ; jpg
